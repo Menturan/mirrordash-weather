@@ -1,0 +1,306 @@
+<div class="weather-container">
+    {% if show_header %}
+    <h2 class="module-header">{{ translations.get("title", "Weather") }}</h2>
+    {% endif %}
+
+    <div class="weather-body">
+        {% if weather.error %}
+            <div class="weather-error">
+                <i data-lucide="alert-circle" class="error-icon"></i>
+                <span>{{ weather.error }}</span>
+            </div>
+        {% else %}
+            <!-- Current Weather Overview -->
+            <div class="weather-current">
+                <div class="current-temp-block">
+                    <span class="current-temp">{{ weather.current.temp }}</span>
+                    <span class="temp-unit">{{ temp_unit_label }}</span>
+                </div>
+                <div class="current-condition-block">
+                    <div class="condition-icon-wrapper">
+                        <i data-lucide="{{ weather.current.icon }}" class="current-icon"></i>
+                    </div>
+                    <span class="condition-text">{{ weather.current.condition }}</span>
+                </div>
+            </div>
+
+            <!-- Current Details (Wind & Precip) -->
+            <div class="current-details">
+                {% if show_wind and weather.current.wind_speed is not none %}
+                <div class="detail-item" title="Wind">
+                    <i data-lucide="wind" class="detail-icon"></i>
+                    <span>{{ weather.current.wind_speed }} {{ wind_unit_label }} {{ weather.current.wind_dir }}</span>
+                </div>
+                {% endif %}
+                
+                {% if show_precipitation and weather.current.precipitation is not none %}
+                <div class="detail-item" title="Precipitation">
+                    <i data-lucide="droplet" class="detail-icon"></i>
+                    <span>{{ weather.current.precipitation }} mm</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Daily Forecast Table -->
+            {% if show_forecast and weather.forecast %}
+            <div class="weather-forecast">
+                {% for day in weather.forecast %}
+                <div class="forecast-row">
+                    <span class="forecast-day">{{ day.day_name }}</span>
+                    <span class="forecast-icon" title="{{ day.condition }}">
+                        <i data-lucide="{{ day.icon }}"></i>
+                    </span>
+                    <span class="forecast-temp">
+                        <span class="temp-high">{{ day.temp_max }}°</span>
+                        <span class="temp-low">{{ day.temp_min }}°</span>
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+            
+            <div class="weather-footer">
+                <span>{{ translations.get("last_checked", "Last checked") }}: {{ last_checked }} ({{ weather.current.provider_name }})</span>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.weather-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 320px;
+    font-family: var(--mirror-font-family, sans-serif);
+    color: var(--color-standard-gray, #999999);
+    box-sizing: border-box;
+}
+
+/* Alignment variants snapping based on module position in the HUD grid */
+#top_right .weather-container,
+#middle_right .weather-container,
+#bottom_right .weather-container {
+    align-items: flex-end;
+    text-align: right;
+}
+
+#top_right .weather-current,
+#middle_right .weather-current,
+#bottom_right .weather-current {
+    flex-direction: row-reverse;
+}
+
+#top_right .current-condition-block,
+#middle_right .current-condition-block,
+#bottom_right .current-condition-block {
+    align-items: flex-end;
+}
+
+#top_right .current-details,
+#middle_right .current-details,
+#bottom_right .current-details {
+    justify-content: flex-end;
+}
+
+#top_right .forecast-row,
+#middle_right .forecast-row,
+#bottom_right .forecast-row {
+    flex-direction: row-reverse;
+}
+
+#top_right .forecast-day,
+#middle_right .forecast-day,
+#bottom_right .forecast-day {
+    text-align: right;
+}
+
+#top_right .forecast-temp,
+#middle_right .forecast-temp,
+#bottom_right .forecast-temp {
+    justify-content: flex-start;
+}
+
+#top_left .weather-container,
+#middle_left .weather-container,
+#bottom_left .weather-container {
+    align-items: flex-start;
+    text-align: left;
+}
+
+.weather-body {
+    width: 100%;
+    margin-top: 8px;
+}
+
+/* Current weather layout */
+.weather-current {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+.current-temp-block {
+    display: flex;
+    align-items: flex-start;
+}
+
+.current-temp {
+    font-size: 54px;
+    font-weight: 100;
+    line-height: 1.0;
+    letter-spacing: -0.04em;
+    color: var(--color-high-contrast, #ffffff);
+}
+
+.temp-unit {
+    font-size: 20px;
+    font-weight: 300;
+    color: var(--color-standard-gray, #999999);
+    margin-top: 4px;
+    margin-left: 2px;
+}
+
+.current-condition-block {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+}
+
+.condition-icon-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.current-icon {
+    width: 38px;
+    height: 38px;
+    stroke-width: 1.5px;
+    color: var(--color-high-contrast, #ffffff);
+}
+
+.condition-text {
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--color-standard-gray, #999999);
+    text-transform: capitalize;
+}
+
+/* Wind and Precipitation details */
+.current-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 16px;
+    font-size: 13px;
+    color: var(--color-standard-gray, #999999);
+}
+
+.detail-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.detail-icon {
+    width: 14px;
+    height: 14px;
+    stroke-width: 1.5px;
+    color: var(--color-dimmed-charcoal, #666666);
+}
+
+/* Forecast Table */
+.weather-forecast {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    border-top: 1px solid var(--color-dimmed-charcoal, #666666);
+    padding-top: 12px;
+    margin-bottom: 12px;
+}
+
+.forecast-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 14px;
+    animation: weatherFadeIn 0.5s ease-out;
+}
+
+.forecast-day {
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--color-standard-gray, #999999);
+    flex: 1;
+    text-align: left;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.forecast-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.forecast-icon i {
+    width: 18px;
+    height: 18px;
+    stroke-width: 1.5px;
+    color: var(--color-high-contrast, #ffffff);
+}
+
+.forecast-temp {
+    display: flex;
+    justify-content: flex-end;
+    min-width: 70px;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.temp-high {
+    color: var(--color-high-contrast, #ffffff);
+    font-weight: 400;
+}
+
+.temp-low {
+    color: var(--color-dimmed-charcoal, #666666);
+    font-weight: 300;
+}
+
+/* Footer info */
+.weather-footer {
+    font-size: 11px;
+    color: var(--color-dimmed-charcoal, #666666);
+    margin-top: 6px;
+}
+
+/* Error style */
+.weather-error {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    border-radius: var(--radius-sm, 4px);
+    color: var(--color-error, #ffb4ab);
+    font-size: 14px;
+}
+
+.error-icon {
+    width: 18px;
+    height: 18px;
+    stroke-width: 1.5px;
+    flex-shrink: 0;
+}
+
+@keyframes weatherFadeIn {
+    from { opacity: 0; transform: translateY(2px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>

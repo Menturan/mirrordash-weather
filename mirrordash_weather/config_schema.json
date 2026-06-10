@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Weather Module Settings",
+  "type": "object",
+  "properties": {
+    "enabled": {
+      "type": "boolean",
+      "default": true,
+      "title": "Enabled",
+      "description": "Enable or disable this module."
+    },
+    "position": {
+      "type": "string",
+      "default": "top_left",
+      "enum": ["top_left", "top_center", "top_right", "middle_left", "middle_center", "middle_right", "bottom_left", "bottom_center", "bottom_right"],
+      "title": "Screen Position",
+      "description": "Where to display this module on the mirror screen."
+    },
+    "interval": {
+      "type": "integer",
+      "default": 900,
+      "title": "Update Interval (Seconds)",
+      "description": "Time to wait between data refreshes (15 minutes recommended)."
+    },
+    "provider": {
+      "type": "string",
+      "default": "smhi",
+      "enum": ["smhi", "open_meteo", "weatherapi", "openweathermap"],
+      "title": "Weather Provider",
+      "description": "Select weather provider. SMHI is recommended for the Nordics, Open-Meteo is key-less and global, WeatherAPI and OpenWeather require API keys."
+    },
+    "weatherapi_key": {
+      "type": "string",
+      "default": "",
+      "title": "WeatherAPI.com Key",
+      "description": "API Key for WeatherAPI.com (required if WeatherAPI is selected)."
+    },
+    "openweathermap_key": {
+      "type": "string",
+      "default": "",
+      "title": "OpenWeatherMap Key",
+      "description": "API Key for OpenWeatherMap (required if OpenWeatherMap is selected)."
+    },
+    "show_header": {
+      "type": "boolean",
+      "default": true,
+      "title": "Show Header",
+      "description": "Display the module header title."
+    },
+    "show_wind": {
+      "type": "boolean",
+      "default": true,
+      "title": "Show Wind",
+      "description": "Display wind speed and direction."
+    },
+    "show_precipitation": {
+      "type": "boolean",
+      "default": true,
+      "title": "Show Precipitation",
+      "description": "Display current precipitation information."
+    },
+    "show_forecast": {
+      "type": "boolean",
+      "default": true,
+      "title": "Show Forecast",
+      "description": "Display the daily forecast table."
+    },
+    "forecast_days": {
+      "type": "integer",
+      "default": 4,
+      "minimum": 1,
+      "maximum": 7,
+      "title": "Forecast Days",
+      "description": "Number of days to show in the daily forecast."
+    }
+  },
+  "required": ["enabled", "position", "interval", "provider", "show_header", "show_wind", "show_precipitation", "show_forecast", "forecast_days"]
+}
