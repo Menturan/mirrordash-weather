@@ -81,3 +81,6 @@ Coordinates, timezone, and units are read automatically from the `globals` block
 ## Screenshot
 
 ![Screenshot](screenshot.png)
+
+## License
+[PolyForm Noncommercial License 1.0.0](LICENSE.md)

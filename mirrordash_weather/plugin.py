@@ -208,8 +208,13 @@ class WeatherModule:
             f"lon={self.longitude}, tz={timezone_name}, lang={self.lang}, units={self.temp_unit}/{self.dist_unit}"
         )
 
-    def translate(self, key, default=None):
-        return self.translations.get(key, default or key)
+    def translate(self, key: str, default: str = None) -> str:
+        if not hasattr(self, "translations") or not self.translations:
+            return default if default is not None else key
+        val = self.translations.get(key)
+        if val is not None:
+            return val
+        return default if default is not None else key
 
     def convert_temp(self, temp_c: float) -> float:
         if self.temp_unit == "F":
@@ -240,8 +245,10 @@ class WeatherModule:
                 if cache_path:
                     try:
                         import json
-                        with open(cache_path, "w", encoding="utf-8") as f:
-                            json.dump(data, f)
+                        def save_to_file():
+                            with open(cache_path, "w", encoding="utf-8") as f:
+                                json.dump(data, f)
+                        await asyncio.to_thread(save_to_file)
                     except Exception as ce:
                         logger.warning(f"Could not save weather cache: {ce}")
                 return data
@@ -255,8 +262,10 @@ class WeatherModule:
             try:
                 import json
                 logger.info(f"Using cached weather data from {cache_path}")
-                with open(cache_path, "r", encoding="utf-8") as f:
-                    return json.load(f)
+                def read_from_file():
+                    with open(cache_path, "r", encoding="utf-8") as f:
+                        return json.load(f)
+                return await asyncio.to_thread(read_from_file)
             except Exception as re:
                 logger.error(f"Failed to read weather cache from {cache_path}: {re}")
                 
