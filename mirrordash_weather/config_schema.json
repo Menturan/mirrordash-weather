@@ -72,7 +72,29 @@
       "maximum": 7,
       "title": "Forecast Days",
       "description": "Number of days to show in the daily forecast."
+    },
+    "forecast_type": {
+      "type": "string",
+      "default": "daily",
+      "enum": ["daily", "hourly", "combined"],
+      "title": "Forecast Type",
+      "description": "Select forecast data: daily (upcoming days), hourly (upcoming hours), or combined (both today's hours and upcoming days)."
+    },
+    "layout": {
+      "type": "string",
+      "default": "horizontal",
+      "enum": ["horizontal", "vertical"],
+      "title": "Layout Style",
+      "description": "Select the visual style: horizontal (wider grid timeline/columns) or vertical (original list/rows)."
+    },
+    "forecast_hours": {
+      "type": "integer",
+      "default": 6,
+      "minimum": 1,
+      "maximum": 24,
+      "title": "Forecast Hours",
+      "description": "Number of hours to show in the hourly timeline."
     }
   },
-  "required": ["enabled", "position", "interval", "provider", "show_header", "show_wind", "show_precipitation", "show_forecast", "forecast_days"]
+  "required": ["enabled", "position", "interval", "provider", "show_header", "show_wind", "show_precipitation", "show_forecast", "forecast_days", "forecast_type", "layout", "forecast_hours"]
 }

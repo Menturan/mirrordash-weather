@@ -1,4 +1,4 @@
-<div class="weather-container">
+<div class="weather-container layout-{{ layout }} type-{{ forecast_type }}">
     {% if show_header %}
     <h2 class="module-header">{{ translations.get("title", "Weather") }}</h2>
     {% endif %}
@@ -12,51 +12,176 @@
         {% else %}
             <!-- Current Weather Overview -->
             <div class="weather-current">
-                <div class="current-temp-block">
-                    <span class="current-temp">{{ weather.current.temp }}</span>
-                    <span class="temp-unit">{{ temp_unit_label }}</span>
-                </div>
-                <div class="current-condition-block">
-                    <div class="condition-icon-wrapper">
-                        <i data-lucide="{{ weather.current.icon }}" class="current-icon"></i>
+                <div class="weather-current-main">
+                    <div class="current-temp-block">
+                        <span class="current-temp">{{ weather.current.temp }}</span>
+                        <span class="temp-unit">{{ temp_unit_label }}</span>
                     </div>
-                    <span class="condition-text">{{ weather.current.condition }}</span>
+                    <div class="current-condition-block">
+                        <div class="condition-icon-wrapper">
+                            <i data-lucide="{{ weather.current.icon }}" class="current-icon animate-pulse-subtle"></i>
+                        </div>
+                        <span class="condition-text">{{ weather.current.condition }}</span>
+                    </div>
                 </div>
-            </div>
 
-            <!-- Current Details (Wind & Precip) -->
-            <div class="current-details">
-                {% if show_wind and weather.current.wind_speed is not none %}
-                <div class="detail-item" title="Wind">
-                    <i data-lucide="wind" class="detail-icon"></i>
-                    <span>{{ weather.current.wind_speed }} {{ wind_unit_label }} {{ weather.current.wind_dir }}</span>
+                <!-- Current Details (Wind & Precip) -->
+                {% if (show_wind and weather.current.wind_speed is not none) or (show_precipitation and weather.current.precipitation is not none) %}
+                <div class="current-details">
+                    {% if show_wind and weather.current.wind_speed is not none %}
+                    <div class="detail-item" title="Wind">
+                        <i data-lucide="wind" class="detail-icon"></i>
+                        <span>{{ weather.current.wind_speed }} {{ wind_unit_label }} {{ weather.current.wind_dir }}</span>
+                    </div>
+                    {% endif %}
+                    
+                    {% if show_precipitation and weather.current.precipitation is not none %}
+                    <div class="detail-item" title="Precipitation">
+                        <i data-lucide="droplet" class="detail-icon"></i>
+                        <span>{{ weather.current.precipitation }} mm</span>
+                    </div>
+                    {% endif %}
                 </div>
                 {% endif %}
-                
-                {% if show_precipitation and weather.current.precipitation is not none %}
-                <div class="detail-item" title="Precipitation">
-                    <i data-lucide="droplet" class="detail-icon"></i>
-                    <span>{{ weather.current.precipitation }} mm</span>
-                </div>
-                {% endif %}
             </div>
 
-            <!-- Daily Forecast Table -->
-            {% if show_forecast and weather.forecast %}
-            <div class="weather-forecast">
-                {% for day in weather.forecast %}
-                <div class="forecast-row">
-                    <span class="forecast-day">{{ day.day_name }}</span>
-                    <span class="forecast-icon" title="{{ day.condition }}">
-                        <i data-lucide="{{ day.icon }}"></i>
-                    </span>
-                    <span class="forecast-temp">
-                        <span class="temp-high">{{ day.temp_max }}°</span>
-                        <span class="temp-low">{{ day.temp_min }}°</span>
-                    </span>
-                </div>
-                {% endfor %}
-            </div>
+            <!-- Forecast Section -->
+            {% if show_forecast %}
+                {% if forecast_type == "daily" and weather.forecast %}
+                    <!-- Daily Forecast -->
+                    <div class="weather-forecast">
+                        {% if layout == "horizontal" %}
+                            <!-- Horizontal Daily Grid -->
+                            <div class="forecast-grid">
+                                {% for day in weather.forecast %}
+                                <div class="forecast-grid__day">
+                                    <span class="forecast-grid__name">{{ day.day_name }}</span>
+                                    <span class="forecast-grid__icon" title="{{ day.condition }}">
+                                        <i data-lucide="{{ day.icon }}"></i>
+                                    </span>
+                                    <span class="forecast-grid__temp">
+                                        <span class="temp-high">{{ day.temp_max }}°</span>
+                                        <span class="temp-low">{{ day.temp_min }}°</span>
+                                    </span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <!-- Vertical Daily Rows -->
+                            <div class="forecast-rows">
+                                {% for day in weather.forecast %}
+                                <div class="forecast-row">
+                                    <span class="forecast-day">{{ day.day_name }}</span>
+                                    <span class="forecast-icon" title="{{ day.condition }}">
+                                        <i data-lucide="{{ day.icon }}"></i>
+                                    </span>
+                                    <span class="forecast-temp">
+                                        <span class="temp-high">{{ day.temp_max }}°</span>
+                                        <span class="temp-low">{{ day.temp_min }}°</span>
+                                    </span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                {% elif forecast_type == "hourly" and weather.hourly_forecast %}
+                    <!-- Hourly Forecast -->
+                    <div class="weather-forecast">
+                        {% if layout == "horizontal" %}
+                            <!-- Horizontal Hourly Grid -->
+                            <div class="forecast-grid">
+                                {% for hour in weather.hourly_forecast %}
+                                <div class="forecast-grid__day">
+                                    <span class="forecast-grid__name">{{ hour.time_label }}</span>
+                                    <span class="forecast-grid__icon" title="{{ hour.condition }}">
+                                        <i data-lucide="{{ hour.icon }}"></i>
+                                    </span>
+                                    <span class="forecast-grid__temp">
+                                        <span class="temp-high">{{ hour.temp }}°</span>
+                                    </span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <!-- Vertical Hourly Rows -->
+                            <div class="forecast-rows">
+                                {% for hour in weather.hourly_forecast %}
+                                <div class="forecast-row">
+                                    <span class="forecast-day">{{ hour.time_label }}</span>
+                                    <span class="forecast-icon" title="{{ hour.condition }}">
+                                        <i data-lucide="{{ hour.icon }}"></i>
+                                    </span>
+                                    <span class="forecast-temp">
+                                        <span class="temp-high">{{ hour.temp }}°</span>
+                                    </span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                {% elif forecast_type == "combined" %}
+                    <!-- Combined Forecast (Hourly Timeline + Daily Forecast) -->
+                    <div class="weather-forecast combined-forecast">
+                        <!-- 1. Hourly Timeline (Always Horizontal for premium glanceability) -->
+                        {% if weather.hourly_forecast %}
+                        <div class="combined-section-title">{{ translations.get("hourly", "Hourly") }}</div>
+                        <div class="forecast-grid hourly-timeline">
+                            {% for hour in weather.hourly_forecast %}
+                            <div class="forecast-grid__day">
+                                <span class="forecast-grid__name">{{ hour.time_label }}</span>
+                                <span class="forecast-grid__icon" title="{{ hour.condition }}">
+                                    <i data-lucide="{{ hour.icon }}"></i>
+                                </span>
+                                <span class="forecast-grid__temp">
+                                    <span class="temp-high">{{ hour.temp }}°</span>
+                                </span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        <!-- Separator line -->
+                        {% if weather.hourly_forecast and weather.forecast %}
+                        <div class="combined-separator"></div>
+                        {% endif %}
+
+                        <!-- 2. Daily Forecast (Horizontal Grid or Vertical Rows depending on layout) -->
+                        {% if weather.forecast %}
+                        <div class="combined-section-title">{{ translations.get("daily", "Daily") }}</div>
+                        {% if layout == "horizontal" %}
+                            <div class="forecast-grid">
+                                {% for day in weather.forecast %}
+                                <div class="forecast-grid__day">
+                                    <span class="forecast-grid__name">{{ day.day_name }}</span>
+                                    <span class="forecast-grid__icon" title="{{ day.condition }}">
+                                        <i data-lucide="{{ day.icon }}"></i>
+                                    </span>
+                                    <span class="forecast-grid__temp">
+                                        <span class="temp-high">{{ day.temp_max }}°</span>
+                                        <span class="temp-low">{{ day.temp_min }}°</span>
+                                    </span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="forecast-rows">
+                                {% for day in weather.forecast %}
+                                <div class="forecast-row">
+                                    <span class="forecast-day">{{ day.day_name }}</span>
+                                    <span class="forecast-icon" title="{{ day.condition }}">
+                                        <i data-lucide="{{ day.icon }}"></i>
+                                    </span>
+                                    <span class="forecast-temp">
+                                        <span class="temp-high">{{ day.temp_max }}°</span>
+                                        <span class="temp-low">{{ day.temp_min }}°</span>
+                                    </span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        {% endif %}
+                    </div>
+                {% endif %}
             {% endif %}
             
             <div class="weather-footer">
@@ -71,10 +196,25 @@
     display: flex;
     flex-direction: column;
     width: 100%;
-    max-width: 320px;
     font-family: var(--mirror-font-family, sans-serif);
     color: var(--color-standard-gray, #999999);
     box-sizing: border-box;
+}
+
+.layout-horizontal {
+    max-width: 440px;
+}
+
+.layout-vertical {
+    max-width: 320px;
+}
+
+.type-combined.layout-horizontal {
+    max-width: 460px;
+}
+
+.type-combined.layout-vertical {
+    max-width: 380px;
 }
 
 /* Alignment variants snapping based on module position in the HUD grid */
@@ -85,40 +225,60 @@
     text-align: right;
 }
 
-#top_right .weather-current,
-#middle_right .weather-current,
-#bottom_right .weather-current {
+/* Horizontal alignments */
+#top_right .layout-horizontal .weather-current,
+#middle_right .layout-horizontal .weather-current,
+#bottom_right .layout-horizontal .weather-current {
     flex-direction: row-reverse;
 }
 
-#top_right .current-condition-block,
-#middle_right .current-condition-block,
-#bottom_right .current-condition-block {
+#top_right .layout-horizontal .current-condition-block,
+#middle_right .layout-horizontal .current-condition-block,
+#bottom_right .layout-horizontal .current-condition-block {
     align-items: flex-end;
 }
 
-#top_right .current-details,
-#middle_right .current-details,
-#bottom_right .current-details {
-    justify-content: flex-end;
+#top_right .layout-horizontal .current-details,
+#middle_right .layout-horizontal .current-details,
+#bottom_right .layout-horizontal .current-details {
+    align-items: flex-end;
 }
 
-#top_right .forecast-row,
-#middle_right .forecast-row,
-#bottom_right .forecast-row {
+#top_right .layout-horizontal .detail-item,
+#middle_right .layout-horizontal .detail-item,
+#bottom_right .layout-horizontal .detail-item {
     flex-direction: row-reverse;
 }
 
-#top_right .forecast-day,
-#middle_right .forecast-day,
-#bottom_right .forecast-day {
-    text-align: right;
+/* Vertical alignments */
+#top_right .layout-vertical .weather-current,
+#middle_right .layout-vertical .weather-current,
+#bottom_right .layout-vertical .weather-current {
+    align-items: flex-end;
 }
 
-#top_right .forecast-temp,
-#middle_right .forecast-temp,
-#bottom_right .forecast-temp {
-    justify-content: flex-start;
+#top_right .layout-vertical .weather-current-main,
+#middle_right .layout-vertical .weather-current-main,
+#bottom_right .layout-vertical .weather-current-main {
+    flex-direction: row-reverse;
+}
+
+#top_right .layout-vertical .current-condition-block,
+#middle_right .layout-vertical .current-condition-block,
+#bottom_right .layout-vertical .current-condition-block {
+    align-items: flex-end;
+}
+
+#top_right .layout-vertical .current-details,
+#middle_right .layout-vertical .current-details,
+#bottom_right .layout-vertical .current-details {
+    align-items: flex-end;
+}
+
+#top_right .layout-vertical .detail-item,
+#middle_right .layout-vertical .detail-item,
+#bottom_right .layout-vertical .detail-item {
+    flex-direction: row-reverse;
 }
 
 #top_left .weather-container,
@@ -128,20 +288,49 @@
     text-align: left;
 }
 
+#top_left .current-details,
+#middle_left .current-details,
+#bottom_left .current-details {
+    align-items: flex-start;
+}
+
 .weather-body {
     width: 100%;
     margin-top: 8px;
 }
 
-/* Current weather layout */
-.weather-current {
+/* Horizontal current weather layout */
+.layout-horizontal .weather-current {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 12px;
+    gap: 24px;
+    margin-bottom: 16px;
+    width: 100%;
 }
 
+.layout-horizontal .weather-current-main {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+/* Vertical current weather layout */
+.layout-vertical .weather-current {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+    width: 100%;
+}
+
+.layout-vertical .weather-current-main {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+/* Details and Temp typography */
 .current-temp-block {
     display: flex;
     align-items: flex-start;
@@ -190,14 +379,23 @@
     text-transform: capitalize;
 }
 
-/* Wind and Precipitation details */
+/* Details column/row */
 .current-details {
     display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    margin-bottom: 16px;
     font-size: 13px;
     color: var(--color-standard-gray, #999999);
+    flex-shrink: 0;
+}
+
+.layout-horizontal .current-details {
+    flex-direction: column;
+    gap: 6px;
+}
+
+.layout-vertical .current-details {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 12px;
 }
 
 .detail-item {
@@ -213,14 +411,65 @@
     color: var(--color-dimmed-charcoal, #666666);
 }
 
-/* Forecast Table */
+/* Forecast layouts */
 .weather-forecast {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
     border-top: 1px solid var(--color-dimmed-charcoal, #666666);
     padding-top: 12px;
     margin-bottom: 12px;
+}
+
+/* Horizontal Grid Layout */
+.forecast-grid {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    gap: 12px;
+}
+
+.forecast-grid__day {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    animation: weatherFadeIn 0.5s ease-out;
+}
+
+.forecast-grid__name {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--color-standard-gray, #999999);
+    letter-spacing: 0.05em;
+}
+
+.forecast-grid__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.forecast-grid__icon i {
+    width: 22px;
+    height: 22px;
+    stroke-width: 1.5px;
+    color: var(--color-high-contrast, #ffffff);
+}
+
+.forecast-grid__temp {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-high-contrast, #ffffff);
+    display: flex;
+    align-items: center;
+}
+
+/* Vertical Rows Layout */
+.forecast-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 .forecast-row {
@@ -229,6 +478,7 @@
     justify-content: space-between;
     font-size: 14px;
     animation: weatherFadeIn 0.5s ease-out;
+    width: 100%;
 }
 
 .forecast-day {
@@ -264,13 +514,55 @@
     flex-shrink: 0;
 }
 
+#top_right .forecast-row,
+#middle_right .forecast-row,
+#bottom_right .forecast-row {
+    flex-direction: row-reverse;
+}
+
+#top_right .forecast-day,
+#middle_right .forecast-day,
+#bottom_right .forecast-day {
+    text-align: right;
+}
+
+#top_right .forecast-temp,
+#middle_right .forecast-temp,
+#bottom_right .forecast-temp {
+    justify-content: flex-start;
+}
+
+/* Combined layout specifics */
+.combined-forecast {
+    display: flex;
+    flex-direction: column;
+}
+
+.combined-section-title {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--color-dimmed-charcoal, #666666);
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+    width: 100%;
+}
+
+.combined-separator {
+    border-top: 1px dashed var(--color-dimmed-charcoal, #666666);
+    margin: 12px 0;
+    width: 100%;
+    opacity: 0.5;
+}
+
+/* Temp high / low styles */
 .temp-high {
     color: var(--color-high-contrast, #ffffff);
-    font-weight: 400;
 }
 
 .temp-low {
     color: var(--color-dimmed-charcoal, #666666);
+    margin-left: 4px;
     font-weight: 300;
 }
 
@@ -297,6 +589,16 @@
     height: 18px;
     stroke-width: 1.5px;
     flex-shrink: 0;
+}
+
+/* Pulse animation */
+.animate-pulse-subtle {
+    animation: pulseSubtle 3s infinite ease-in-out;
+}
+
+@keyframes pulseSubtle {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.85; transform: scale(0.96); }
 }
 
 @keyframes weatherFadeIn {

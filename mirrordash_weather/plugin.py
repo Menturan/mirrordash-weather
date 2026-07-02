@@ -1,3 +1,5 @@
+# Licensed under the PolyForm Noncommercial License 1.0.0.
+
 import asyncio
 import logging
 import os
@@ -193,9 +195,13 @@ class WeatherModule:
         self.show_precipitation = config.get("show_precipitation", True)
         self.show_forecast = config.get("show_forecast", True)
         self.forecast_days = config.get("forecast_days", 4)
+        self.forecast_type = config.get("forecast_type", "daily")
+        self.layout = config.get("layout", "horizontal")
+        self.forecast_hours = config.get("forecast_hours", 6)
         
         self.temp_unit = global_cfg.get("temperature_unit", "C")
         self.dist_unit = global_cfg.get("distance_unit", "km")
+        self.time_format = global_cfg.get("time_format", "24h")
         
         timezone_name = global_cfg.get("timezone", "Europe/Stockholm")
         try:
@@ -271,6 +277,12 @@ class WeatherModule:
                 
         return {}
 
+    def get_hour_label(self, dt: datetime) -> str:
+        if self.time_format == "12h":
+            return dt.strftime("%I %p").lstrip('0')
+        else:
+            return dt.strftime("%H:%M")
+
     def get_day_label(self, d: date, today_date: date) -> str:
         diff_days = (d - today_date).days
         if diff_days == 0:
@@ -284,7 +296,6 @@ class WeatherModule:
         except Exception:
             return d.strftime("%a").upper()
 
-
     def parse_smhi(self, data: dict, today_date: date) -> dict:
         if not data or "timeSeries" not in data:
             logger.warning("SMHI response missing 'timeSeries' key. Keys present: %s", list(data.keys()) if data else [])
@@ -293,6 +304,14 @@ class WeatherModule:
         timeseries = data["timeSeries"]
         if not timeseries:
             return {}
+
+        # Resolve now_dt and today_val for relative date/time calculations
+        if isinstance(today_date, datetime):
+            now_dt = today_date
+            today_val = today_date.date()
+        else:
+            now_dt = datetime.combine(today_date, time.min, tzinfo=self.tz)
+            today_val = today_date
 
         # Use the first (soonest) entry as current conditions
         current_entry = timeseries[0]
@@ -308,6 +327,8 @@ class WeatherModule:
 
         # Build daily forecast groups (future days only)
         daily_groups: dict = {}
+        hourly_forecast = []
+
         for entry in timeseries:
             time_str = entry.get("time", "")
             if not time_str:
@@ -318,7 +339,22 @@ class WeatherModule:
             except Exception:
                 continue
 
-            if entry_date <= today_date:
+            # Populate hourly
+            if dt >= now_dt:
+                e_data = entry.get("data", {})
+                h_temp = e_data.get("air_temperature")
+                h_sym = e_data.get("symbol_code")
+                if h_temp is not None and h_sym is not None:
+                    h_cond_key = SMHI_CONDITION_MAP.get(int(h_sym), "clear")
+                    hourly_forecast.append({
+                        "time_label": self.get_hour_label(dt),
+                        "temp": self.convert_temp(h_temp),
+                        "icon": UNIFIED_ICONS.get(h_cond_key, "sun"),
+                        "condition": self.translate(h_cond_key, h_cond_key.replace("_", " ").title())
+                    })
+
+            # Populate daily (strictly after today)
+            if entry_date <= today_val:
                 continue
 
             if entry_date not in daily_groups:
@@ -344,7 +380,7 @@ class WeatherModule:
             f_cond_key = SMHI_CONDITION_MAP.get(midday_sym, "clear")
 
             forecast_list.append({
-                "day_name": self.get_day_label(d, today_date),
+                "day_name": self.get_day_label(d, today_val),
                 "temp_min": self.convert_temp(t_min),
                 "temp_max": self.convert_temp(t_max),
                 "icon": UNIFIED_ICONS.get(f_cond_key, "sun"),
@@ -361,7 +397,8 @@ class WeatherModule:
                 "precipitation": round(curr_precip, 1),
                 "provider_name": "SMHI"
             },
-            "forecast": forecast_list[:self.forecast_days]
+            "forecast": forecast_list[:self.forecast_days],
+            "hourly_forecast": hourly_forecast[:self.forecast_hours]
         }
 
     def parse_open_meteo(self, data: dict, today_date: date) -> dict:
@@ -371,6 +408,14 @@ class WeatherModule:
         current = data["current"]
         daily = data.get("daily", {})
         
+        # Resolve now_dt and today_val for relative date/time calculations
+        if isinstance(today_date, datetime):
+            now_dt = today_date
+            today_val = today_date.date()
+        else:
+            now_dt = datetime.combine(today_date, time.min, tzinfo=self.tz)
+            today_val = today_date
+
         curr_temp = current.get("temperature_2m", 0.0)
         curr_wind = current.get("wind_speed_10m", 0.0)
         curr_wind_deg = current.get("wind_direction_10m", 0)
@@ -379,6 +424,7 @@ class WeatherModule:
         
         cond_key = WMO_CONDITION_MAP.get(curr_code, "clear")
         
+        # Daily forecast
         forecast_list = []
         if daily and "time" in daily:
             times = daily["time"]
@@ -392,7 +438,7 @@ class WeatherModule:
                 except Exception:
                     continue
                     
-                if d <= today_date:
+                if d <= today_val:
                     continue
                     
                 f_code = codes[i] if i < len(codes) else 0
@@ -402,11 +448,40 @@ class WeatherModule:
                 f_cond_key = WMO_CONDITION_MAP.get(f_code, "clear")
                 
                 forecast_list.append({
-                    "day_name": self.get_day_label(d, today_date),
+                    "day_name": self.get_day_label(d, today_val),
                     "temp_min": self.convert_temp(t_min),
                     "temp_max": self.convert_temp(t_max),
                     "icon": UNIFIED_ICONS.get(f_cond_key, "sun"),
                     "condition": self.translate(f_cond_key, f_cond_key.replace("_", " ").title())
+                })
+
+        # Hourly forecast
+        hourly_forecast = []
+        hourly = data.get("hourly", {})
+        if hourly and "time" in hourly:
+            h_times = hourly["time"]
+            h_temps = hourly.get("temperature_2m", [])
+            h_codes = hourly.get("weather_code", [])
+            for i, time_str in enumerate(h_times):
+                try:
+                    dt = datetime.fromisoformat(time_str).replace(tzinfo=self.tz)
+                except Exception:
+                    continue
+
+                if dt < now_dt:
+                    continue
+
+                h_temp = h_temps[i] if i < len(h_temps) else None
+                h_code = h_codes[i] if i < len(h_codes) else None
+                if h_temp is None or h_code is None:
+                    continue
+
+                h_cond_key = WMO_CONDITION_MAP.get(h_code, "clear")
+                hourly_forecast.append({
+                    "time_label": self.get_hour_label(dt),
+                    "temp": self.convert_temp(h_temp),
+                    "icon": UNIFIED_ICONS.get(h_cond_key, "sun"),
+                    "condition": self.translate(h_cond_key, h_cond_key.replace("_", " ").title())
                 })
                 
         return {
@@ -419,7 +494,8 @@ class WeatherModule:
                 "precipitation": round(curr_precip, 1),
                 "provider_name": "Open-Meteo"
             },
-            "forecast": forecast_list[:self.forecast_days]
+            "forecast": forecast_list[:self.forecast_days],
+            "hourly_forecast": hourly_forecast[:self.forecast_hours]
         }
 
     def parse_weatherapi(self, data: dict, today_date: date) -> dict:
@@ -429,16 +505,26 @@ class WeatherModule:
         current = data["current"]
         forecast = data.get("forecast", {}).get("forecastday", [])
         
+        # Resolve now_dt and today_val for relative date/time calculations
+        if isinstance(today_date, datetime):
+            now_dt = today_date
+            today_val = today_date.date()
+        else:
+            now_dt = datetime.combine(today_date, time.min, tzinfo=self.tz)
+            today_val = today_date
+
         curr_temp = current.get("temp_c", 0.0)
         curr_wind_kph = current.get("wind_kph", 0.0)
-        curr_wind = curr_wind_kph / 3.6  # Convert to m/s for unified input
+        curr_wind = curr_wind_kph / 3.6  # Convert to m/s
         curr_wind_deg = current.get("wind_degree", 0)
         curr_precip = current.get("precip_mm", 0.0)
         curr_code = current.get("condition", {}).get("code", 1000)
         
         cond_key = WEATHERAPI_CONDITION_MAP.get(curr_code, "clear")
         
+        # Daily forecast
         forecast_list = []
+        hourly_forecast = []
         for day_entry in forecast:
             time_str = day_entry.get("date", "")
             try:
@@ -446,23 +532,47 @@ class WeatherModule:
             except Exception:
                 continue
                 
-            if d <= today_date:
-                continue
+            # Parse daily (strictly after today)
+            if d > today_val:
+                day_data = day_entry.get("day", {})
+                t_max = day_data.get("maxtemp_c", 0.0)
+                t_min = day_data.get("mintemp_c", 0.0)
+                f_code = day_data.get("condition", {}).get("code", 1000)
                 
-            day_data = day_entry.get("day", {})
-            t_max = day_data.get("maxtemp_c", 0.0)
-            t_min = day_data.get("mintemp_c", 0.0)
-            f_code = day_data.get("condition", {}).get("code", 1000)
-            
-            f_cond_key = WEATHERAPI_CONDITION_MAP.get(f_code, "clear")
-            
-            forecast_list.append({
-                "day_name": self.get_day_label(d, today_date),
-                "temp_min": self.convert_temp(t_min),
-                "temp_max": self.convert_temp(t_max),
-                "icon": UNIFIED_ICONS.get(f_cond_key, "sun"),
-                "condition": self.translate(f_cond_key, f_cond_key.replace("_", " ").title())
-            })
+                f_cond_key = WEATHERAPI_CONDITION_MAP.get(f_code, "clear")
+                
+                forecast_list.append({
+                    "day_name": self.get_day_label(d, today_val),
+                    "temp_min": self.convert_temp(t_min),
+                    "temp_max": self.convert_temp(t_max),
+                    "icon": UNIFIED_ICONS.get(f_cond_key, "sun"),
+                    "condition": self.translate(f_cond_key, f_cond_key.replace("_", " ").title())
+                })
+
+            # Parse hourly
+            hours = day_entry.get("hour", [])
+            for h_entry in hours:
+                h_time_str = h_entry.get("time", "")
+                try:
+                    dt = datetime.strptime(h_time_str, "%Y-%m-%d %H:%M").replace(tzinfo=self.tz)
+                except Exception:
+                    continue
+
+                if dt < now_dt:
+                    continue
+
+                h_temp = h_entry.get("temp_c")
+                h_code = h_entry.get("condition", {}).get("code")
+                if h_temp is None or h_code is None:
+                    continue
+
+                h_cond_key = WEATHERAPI_CONDITION_MAP.get(h_code, "clear")
+                hourly_forecast.append({
+                    "time_label": self.get_hour_label(dt),
+                    "temp": self.convert_temp(h_temp),
+                    "icon": UNIFIED_ICONS.get(h_cond_key, "sun"),
+                    "condition": self.translate(h_cond_key, h_cond_key.replace("_", " ").title())
+                })
             
         return {
             "current": {
@@ -474,7 +584,8 @@ class WeatherModule:
                 "precipitation": round(curr_precip, 1),
                 "provider_name": "WeatherAPI"
             },
-            "forecast": forecast_list[:self.forecast_days]
+            "forecast": forecast_list[:self.forecast_days],
+            "hourly_forecast": hourly_forecast[:self.forecast_hours]
         }
 
     def parse_openweathermap(self, data: dict, today_date: date) -> dict:
@@ -485,6 +596,14 @@ class WeatherModule:
         if not entries:
             return {}
             
+        # Resolve now_dt and today_val for relative date/time calculations
+        if isinstance(today_date, datetime):
+            now_dt = today_date
+            today_val = today_date.date()
+        else:
+            now_dt = datetime.combine(today_date, time.min, tzinfo=self.tz)
+            today_val = today_date
+
         # First entry as current
         first = entries[0]
         main_data = first.get("main", {})
@@ -495,14 +614,15 @@ class WeatherModule:
         curr_wind = first.get("wind", {}).get("speed", 0.0)
         curr_wind_deg = first.get("wind", {}).get("deg", 0)
         
-        # Calculate current precipitation from rain/snow structures
         curr_precip = first.get("rain", {}).get("3h", 0.0) + first.get("snow", {}).get("3h", 0.0)
         curr_code = weather_obj.get("id", 800)
         
         cond_key = map_openweathermap_code(curr_code)
         
-        # Group forecast
+        # Group forecast daily and build hourly list
         daily_groups = {}
+        hourly_forecast = []
+
         for entry in entries:
             ts = entry.get("dt")
             if not ts:
@@ -513,7 +633,23 @@ class WeatherModule:
             except Exception:
                 continue
                 
-            if entry_date <= today_date:
+            # Hourly
+            if dt >= now_dt:
+                e_main = entry.get("main", {})
+                h_temp = e_main.get("temp")
+                e_weather = entry.get("weather", [])
+                h_code = e_weather[0].get("id") if e_weather else None
+                if h_temp is not None and h_code is not None:
+                    h_cond_key = map_openweathermap_code(h_code)
+                    hourly_forecast.append({
+                        "time_label": self.get_hour_label(dt),
+                        "temp": self.convert_temp(h_temp),
+                        "icon": UNIFIED_ICONS.get(h_cond_key, "sun"),
+                        "condition": self.translate(h_cond_key, h_cond_key.replace("_", " ").title())
+                    })
+
+            # Daily (strictly after today)
+            if entry_date <= today_val:
                 continue
                 
             if entry_date not in daily_groups:
@@ -539,7 +675,7 @@ class WeatherModule:
             f_cond_key = map_openweathermap_code(midday_code)
             
             forecast_list.append({
-                "day_name": self.get_day_label(d, today_date),
+                "day_name": self.get_day_label(d, today_val),
                 "temp_min": self.convert_temp(t_min),
                 "temp_max": self.convert_temp(t_max),
                 "icon": UNIFIED_ICONS.get(f_cond_key, "sun"),
@@ -556,37 +692,37 @@ class WeatherModule:
                 "precipitation": round(curr_precip, 1),
                 "provider_name": "OpenWeather"
             },
-            "forecast": forecast_list[:self.forecast_days]
+            "forecast": forecast_list[:self.forecast_days],
+            "hourly_forecast": hourly_forecast[:self.forecast_hours]
         }
 
     async def run_loop(self, broadcast_func):
         logger.info(f"Starting {self.name} run loop")
         while True:
             try:
-                # Get current date in module local timezone
-                today_date = datetime.now(self.tz).date()
+                # Get current date/time in module local timezone
+                now_dt = datetime.now(self.tz)
                 
                 # Fetch data based on selected provider
                 weather_info = {}
                 async with httpx.AsyncClient(verify=True) as client:
                     if self.provider == "smhi":
-                        # snow1g is the standard SMHI point forecast (replaces discontinued pmp3g)
                         url = (
                             f"https://opendata-download-metfcst.smhi.se/api/category/snow1g/version/1/"
                             f"geotype/point/lon/{round(self.longitude, 6)}/lat/{round(self.latitude, 6)}/data.json"
                         )
                         raw_data = await self.fetch_api(client, url)
-                        weather_info = self.parse_smhi(raw_data, today_date)
+                        weather_info = self.parse_smhi(raw_data, now_dt)
                         
                     elif self.provider == "open_meteo":
                         url = (
                             f"https://api.open-meteo.com/v1/forecast?latitude={round(self.latitude, 4)}"
                             f"&longitude={round(self.longitude, 4)}&current=temperature_2m,wind_speed_10m,"
                             f"wind_direction_10m,precipitation,weather_code&daily=weather_code,"
-                            f"temperature_2m_max,temperature_2m_min&timezone={self.tz.key}"
+                            f"temperature_2m_max,temperature_2m_min&hourly=temperature_2m,weather_code&timezone={self.tz.key}"
                         )
                         raw_data = await self.fetch_api(client, url)
-                        weather_info = self.parse_open_meteo(raw_data, today_date)
+                        weather_info = self.parse_open_meteo(raw_data, now_dt)
                         
                     elif self.provider == "weatherapi":
                         if not self.weatherapi_key:
@@ -598,7 +734,7 @@ class WeatherModule:
                                 f"&q={self.latitude},{self.longitude}&days={self.forecast_days + 1}&aqi=no"
                             )
                             raw_data = await self.fetch_api(client, url)
-                            weather_info = self.parse_weatherapi(raw_data, today_date)
+                            weather_info = self.parse_weatherapi(raw_data, now_dt)
                             
                     elif self.provider == "openweathermap":
                         if not self.openweathermap_key:
@@ -610,7 +746,7 @@ class WeatherModule:
                                 f"&lon={self.longitude}&appid={self.openweathermap_key}&units=metric"
                             )
                             raw_data = await self.fetch_api(client, url)
-                            weather_info = self.parse_openweathermap(raw_data, today_date)
+                            weather_info = self.parse_openweathermap(raw_data, now_dt)
                             
                     else:
                         logger.error(f"Unknown weather provider: {self.provider}")
@@ -628,6 +764,8 @@ class WeatherModule:
                     show_wind=self.show_wind,
                     show_precipitation=self.show_precipitation,
                     show_forecast=self.show_forecast,
+                    forecast_type=self.forecast_type,
+                    layout=self.layout,
                     temp_unit_label=self.get_temp_unit_label(),
                     wind_unit_label=self.get_wind_unit_label(),
                     last_checked=datetime.now().strftime("%H:%M")

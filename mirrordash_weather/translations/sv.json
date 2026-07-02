@@ -1,5 +1,7 @@
 {
   "title": "Väder",
+  "hourly": "Timvis",
+  "daily": "Dygnsprognos",
   "last_checked": "Senast uppdaterad",
   "wind": "Vind",
   "precipitation": "Nederbörd",

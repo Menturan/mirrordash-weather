@@ -1,5 +1,7 @@
 {
   "title": "Weather",
+  "hourly": "Hourly",
+  "daily": "Daily",
   "last_checked": "Last checked",
   "wind": "Wind",
   "precipitation": "Precip",
