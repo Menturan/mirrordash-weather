@@ -1,6 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Weather Module Settings",
+  "title": "Weather",
+  "description": "Current weather and forecast for your location, from SMHI, Open-Meteo, WeatherAPI or OpenWeather.",
   "type": "object",
   "properties": {
     "enabled": {

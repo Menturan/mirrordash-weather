@@ -1,6 +1,6 @@
 [project]
 name = "mirrordash-weather"
-version = "0.1.0"
+version = "0.1.1"
 description = "Weather forecast module supporting SMHI, Open-Meteo, WeatherAPI, and OpenWeather"
 authors = [
     { name = "MirrorDash Developer" }
