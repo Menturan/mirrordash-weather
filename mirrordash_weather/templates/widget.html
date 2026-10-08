@@ -5,10 +5,7 @@
 
     <div class="weather-body">
         {% if weather.error %}
-            <div class="weather-error">
-                <i data-lucide="alert-circle" class="error-icon"></i>
-                <span>{{ weather.error }}</span>
-            </div>
+            <div class="module-message"><i data-lucide="cloud-off"></i><span>{{ weather.error }}</span></div>
         {% else %}
             <!-- Current Weather Overview -->
             <div class="weather-current">
@@ -196,7 +193,6 @@
     display: flex;
     flex-direction: column;
     width: 100%;
-    font-family: var(--mirror-font-family, sans-serif);
     color: var(--color-standard-gray, #999999);
     box-sizing: border-box;
 }
@@ -217,83 +213,8 @@
     max-width: 380px;
 }
 
-/* Alignment variants snapping based on module position in the HUD grid */
-#top_right .weather-container,
-#middle_right .weather-container,
-#bottom_right .weather-container {
-    align-items: flex-end;
-    text-align: right;
-}
-
 /* Horizontal alignments */
-#top_right .layout-horizontal .weather-current,
-#middle_right .layout-horizontal .weather-current,
-#bottom_right .layout-horizontal .weather-current {
-    flex-direction: row-reverse;
-}
-
-#top_right .layout-horizontal .current-condition-block,
-#middle_right .layout-horizontal .current-condition-block,
-#bottom_right .layout-horizontal .current-condition-block {
-    align-items: flex-end;
-}
-
-#top_right .layout-horizontal .current-details,
-#middle_right .layout-horizontal .current-details,
-#bottom_right .layout-horizontal .current-details {
-    align-items: flex-end;
-}
-
-#top_right .layout-horizontal .detail-item,
-#middle_right .layout-horizontal .detail-item,
-#bottom_right .layout-horizontal .detail-item {
-    flex-direction: row-reverse;
-}
-
 /* Vertical alignments */
-#top_right .layout-vertical .weather-current,
-#middle_right .layout-vertical .weather-current,
-#bottom_right .layout-vertical .weather-current {
-    align-items: flex-end;
-}
-
-#top_right .layout-vertical .weather-current-main,
-#middle_right .layout-vertical .weather-current-main,
-#bottom_right .layout-vertical .weather-current-main {
-    flex-direction: row-reverse;
-}
-
-#top_right .layout-vertical .current-condition-block,
-#middle_right .layout-vertical .current-condition-block,
-#bottom_right .layout-vertical .current-condition-block {
-    align-items: flex-end;
-}
-
-#top_right .layout-vertical .current-details,
-#middle_right .layout-vertical .current-details,
-#bottom_right .layout-vertical .current-details {
-    align-items: flex-end;
-}
-
-#top_right .layout-vertical .detail-item,
-#middle_right .layout-vertical .detail-item,
-#bottom_right .layout-vertical .detail-item {
-    flex-direction: row-reverse;
-}
-
-#top_left .weather-container,
-#middle_left .weather-container,
-#bottom_left .weather-container {
-    align-items: flex-start;
-    text-align: left;
-}
-
-#top_left .current-details,
-#middle_left .current-details,
-#bottom_left .current-details {
-    align-items: flex-start;
-}
-
 .weather-body {
     width: 100%;
     margin-top: 8px;
@@ -419,48 +340,14 @@
 }
 
 /* Horizontal Grid Layout */
-.forecast-grid {
-    display: flex;
-    justify-content: space-between;
-    width: 100%;
-    gap: 12px;
-}
-
+/* The forecast grid is the .forecast-grid component (modules.css); here only: equal columns,
+   the fade-in, and high and low temperature side by side */
 .forecast-grid__day {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
     flex: 1;
     animation: weatherFadeIn 0.5s ease-out;
 }
 
-.forecast-grid__name {
-    font-size: 11px;
-    font-weight: 700;
-    text-transform: uppercase;
-    color: var(--color-standard-gray, #999999);
-    letter-spacing: 0.05em;
-}
-
-.forecast-grid__icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-}
-
-.forecast-grid__icon i {
-    width: 22px;
-    height: 22px;
-    stroke-width: 1.5px;
-    color: var(--color-high-contrast, #ffffff);
-}
-
 .forecast-grid__temp {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--color-high-contrast, #ffffff);
     display: flex;
     align-items: center;
 }
@@ -514,24 +401,6 @@
     flex-shrink: 0;
 }
 
-#top_right .forecast-row,
-#middle_right .forecast-row,
-#bottom_right .forecast-row {
-    flex-direction: row-reverse;
-}
-
-#top_right .forecast-day,
-#middle_right .forecast-day,
-#bottom_right .forecast-day {
-    text-align: right;
-}
-
-#top_right .forecast-temp,
-#middle_right .forecast-temp,
-#bottom_right .forecast-temp {
-    justify-content: flex-start;
-}
-
 /* Combined layout specifics */
 .combined-forecast {
     display: flex;
@@ -574,23 +443,6 @@
 }
 
 /* Error style */
-.weather-error {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 12px;
-    border-radius: var(--radius-sm, 4px);
-    color: var(--color-error, #ffb4ab);
-    font-size: 14px;
-}
-
-.error-icon {
-    width: 18px;
-    height: 18px;
-    stroke-width: 1.5px;
-    flex-shrink: 0;
-}
-
 /* Pulse animation */
 .animate-pulse-subtle {
     animation: pulseSubtle 3s infinite ease-in-out;

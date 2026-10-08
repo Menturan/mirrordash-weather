@@ -2,11 +2,8 @@
 
 import asyncio
 import logging
-import os
-import hashlib
 from datetime import datetime, date, time, timedelta
 from zoneinfo import ZoneInfo
-import httpx
 from babel.dates import format_date as babel_format_date
 
 logger = logging.getLogger("mirrordash.modules.mirrordash_weather")
@@ -169,10 +166,8 @@ class WeatherModule:
         self.name = "mirrordash_weather"
         self.interval = config.get("interval", 900)
         
-        # Writable paths
-        self.data_dir = config.get("data_dir")
-        self.cache_dir = config.get("cache_dir")
-        
+        self.last_error = None  # fetch_json's error from the last update, e.g. "rejected"
+
         # Translations
         self.translations = config.get("translations", {})
         
@@ -238,44 +233,11 @@ class WeatherModule:
     def get_wind_unit_label(self) -> str:
         return "mph" if self.dist_unit == "miles" else "m/s"
 
-    async def fetch_api(self, client: httpx.AsyncClient, url: str, headers=None) -> dict:
-        """Fetch weather data from URL, saving to cache or loading from cache on failure."""
-        cache_filename = hashlib.md5(url.encode('utf-8')).hexdigest() + ".json"
-        cache_path = os.path.join(self.cache_dir, cache_filename) if self.cache_dir else None
-        
-        try:
-            logger.info(f"Fetching weather from {url}")
-            response = await client.get(url, headers=headers, timeout=10.0)
-            if response.status_code == 200:
-                data = response.json()
-                if cache_path:
-                    try:
-                        import json
-                        def save_to_file():
-                            with open(cache_path, "w", encoding="utf-8") as f:
-                                json.dump(data, f)
-                        await asyncio.to_thread(save_to_file)
-                    except Exception as ce:
-                        logger.warning(f"Could not save weather cache: {ce}")
-                return data
-            else:
-                logger.warning(f"Weather API returned status {response.status_code} for {url}")
-        except Exception as e:
-            logger.warning(f"Failed to fetch weather data: {e}")
-            
-        # Fallback to cache
-        if cache_path and os.path.exists(cache_path):
-            try:
-                import json
-                logger.info(f"Using cached weather data from {cache_path}")
-                def read_from_file():
-                    with open(cache_path, "r", encoding="utf-8") as f:
-                        return json.load(f)
-                return await asyncio.to_thread(read_from_file)
-            except Exception as re:
-                logger.error(f"Failed to read weather cache from {cache_path}: {re}")
-                
-        return {}
+    async def fetch_api(self, url: str, params: dict | None = None) -> dict:
+        """The provider's answer, or the last good one when it can't be reached (fetch_json keeps it,
+        also over a restart). API keys go in params: fetch_json never logs the query."""
+        data, self.last_error = await self.fetch_json(url, params=params)
+        return data or {}
 
     def get_hour_label(self, dt: datetime) -> str:
         if self.time_format == "12h":
@@ -705,57 +667,52 @@ class WeatherModule:
                 
                 # Fetch data based on selected provider
                 weather_info = {}
-                async with httpx.AsyncClient(verify=True) as client:
-                    if self.provider == "smhi":
-                        url = (
-                            f"https://opendata-download-metfcst.smhi.se/api/category/snow1g/version/1/"
-                            f"geotype/point/lon/{round(self.longitude, 6)}/lat/{round(self.latitude, 6)}/data.json"
-                        )
-                        raw_data = await self.fetch_api(client, url)
-                        weather_info = self.parse_smhi(raw_data, now_dt)
-                        
-                    elif self.provider == "open_meteo":
-                        url = (
-                            f"https://api.open-meteo.com/v1/forecast?latitude={round(self.latitude, 4)}"
-                            f"&longitude={round(self.longitude, 4)}&current=temperature_2m,wind_speed_10m,"
-                            f"wind_direction_10m,precipitation,weather_code&daily=weather_code,"
-                            f"temperature_2m_max,temperature_2m_min&hourly=temperature_2m,weather_code&timezone={self.tz.key}"
-                        )
-                        raw_data = await self.fetch_api(client, url)
-                        weather_info = self.parse_open_meteo(raw_data, now_dt)
-                        
-                    elif self.provider == "weatherapi":
-                        if not self.weatherapi_key:
-                            logger.error("WeatherAPI key is missing!")
-                            weather_info = {"error": self.translate("error_api_key", "API Key required")}
-                        else:
-                            url = (
-                                f"https://api.weatherapi.com/v1/forecast.json?key={self.weatherapi_key}"
-                                f"&q={self.latitude},{self.longitude}&days={self.forecast_days + 1}&aqi=no"
-                            )
-                            raw_data = await self.fetch_api(client, url)
-                            weather_info = self.parse_weatherapi(raw_data, now_dt)
-                            
-                    elif self.provider == "openweathermap":
-                        if not self.openweathermap_key:
-                            logger.error("OpenWeatherMap key is missing!")
-                            weather_info = {"error": self.translate("error_api_key", "API Key required")}
-                        else:
-                            url = (
-                                f"https://api.openweathermap.org/data/2.5/forecast?lat={self.latitude}"
-                                f"&lon={self.longitude}&appid={self.openweathermap_key}&units=metric"
-                            )
-                            raw_data = await self.fetch_api(client, url)
-                            weather_info = self.parse_openweathermap(raw_data, now_dt)
-                            
+                self.last_error = None
+                if self.provider == "smhi":
+                    raw_data = await self.fetch_api(
+                        f"https://opendata-download-metfcst.smhi.se/api/category/snow1g/version/1/"
+                        f"geotype/point/lon/{round(self.longitude, 6)}/lat/{round(self.latitude, 6)}/data.json"
+                    )
+                    weather_info = self.parse_smhi(raw_data, now_dt)
+
+                elif self.provider == "open_meteo":
+                    raw_data = await self.fetch_api("https://api.open-meteo.com/v1/forecast", {
+                        "latitude": round(self.latitude, 4), "longitude": round(self.longitude, 4),
+                        "current": "temperature_2m,wind_speed_10m,wind_direction_10m,precipitation,weather_code",
+                        "daily": "weather_code,temperature_2m_max,temperature_2m_min",
+                        "hourly": "temperature_2m,weather_code", "timezone": self.tz.key,
+                    })
+                    weather_info = self.parse_open_meteo(raw_data, now_dt)
+
+                elif self.provider == "weatherapi":
+                    if not self.weatherapi_key:
+                        weather_info = {"error": self.translate("error_api_key", "API Key required")}
                     else:
-                        logger.error(f"Unknown weather provider: {self.provider}")
-                        weather_info = {"error": f"Unknown provider: {self.provider}"}
-                
-                # Check for parsing failure
+                        raw_data = await self.fetch_api("https://api.weatherapi.com/v1/forecast.json", {
+                            "key": self.weatherapi_key, "q": f"{self.latitude},{self.longitude}",
+                            "days": self.forecast_days + 1, "aqi": "no",
+                        })
+                        weather_info = self.parse_weatherapi(raw_data, now_dt)
+
+                elif self.provider == "openweathermap":
+                    if not self.openweathermap_key:
+                        weather_info = {"error": self.translate("error_api_key", "API Key required")}
+                    else:
+                        raw_data = await self.fetch_api("https://api.openweathermap.org/data/2.5/forecast", {
+                            "lat": self.latitude, "lon": self.longitude,
+                            "appid": self.openweathermap_key, "units": "metric",
+                        })
+                        weather_info = self.parse_openweathermap(raw_data, now_dt)
+
+                else:
+                    logger.error(f"Unknown weather provider: {self.provider}")
+                    weather_info = {"error": f"Unknown provider: {self.provider}"}
+
+                # Nothing to show: say why
                 if not weather_info:
-                    weather_info = {"error": self.translate("error_fetch", "Fetch failed")}
-                
+                    weather_info = {"error": self.translate("error_key_rejected", "The API key was rejected. Check it in the module's settings.")
+                                    if self.last_error == "rejected" else self.translate("error_fetch", "Fetch failed")}
+
                 # Render template
                 html = self.render_template(
                     "widget.html",

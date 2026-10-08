@@ -4,19 +4,6 @@
   "description": "Current weather and forecast for your location, from SMHI, Open-Meteo, WeatherAPI or OpenWeather.",
   "type": "object",
   "properties": {
-    "enabled": {
-      "type": "boolean",
-      "default": true,
-      "title": "Enabled",
-      "description": "Enable or disable this module."
-    },
-    "position": {
-      "type": "string",
-      "default": "top_left",
-      "enum": ["top_left", "top_center", "top_right", "middle_left", "middle_center", "middle_right", "bottom_left", "bottom_center", "bottom_right"],
-      "title": "Screen Position",
-      "description": "Where to display this module on the mirror screen."
-    },
     "interval": {
       "type": "integer",
       "default": 900,
@@ -26,7 +13,12 @@
     "provider": {
       "type": "string",
       "default": "smhi",
-      "enum": ["smhi", "open_meteo", "weatherapi", "openweathermap"],
+      "enum": [
+        "smhi",
+        "open_meteo",
+        "weatherapi",
+        "openweathermap"
+      ],
       "title": "Weather Provider",
       "description": "Select weather provider. SMHI is recommended for the Nordics, Open-Meteo is key-less and global, WeatherAPI and OpenWeather require API keys."
     },
@@ -34,13 +26,15 @@
       "type": "string",
       "default": "",
       "title": "WeatherAPI.com Key",
-      "description": "API Key for WeatherAPI.com (required if WeatherAPI is selected)."
+      "description": "API Key for WeatherAPI.com (required if WeatherAPI is selected).",
+      "format": "password"
     },
     "openweathermap_key": {
       "type": "string",
       "default": "",
       "title": "OpenWeatherMap Key",
-      "description": "API Key for OpenWeatherMap (required if OpenWeatherMap is selected)."
+      "description": "API Key for OpenWeatherMap (required if OpenWeatherMap is selected).",
+      "format": "password"
     },
     "show_header": {
       "type": "boolean",
@@ -77,14 +71,21 @@
     "forecast_type": {
       "type": "string",
       "default": "daily",
-      "enum": ["daily", "hourly", "combined"],
+      "enum": [
+        "daily",
+        "hourly",
+        "combined"
+      ],
       "title": "Forecast Type",
       "description": "Select forecast data: daily (upcoming days), hourly (upcoming hours), or combined (both today's hours and upcoming days)."
     },
     "layout": {
       "type": "string",
       "default": "horizontal",
-      "enum": ["horizontal", "vertical"],
+      "enum": [
+        "horizontal",
+        "vertical"
+      ],
       "title": "Layout Style",
       "description": "Select the visual style: horizontal (wider grid timeline/columns) or vertical (original list/rows)."
     },
@@ -97,5 +98,16 @@
       "description": "Number of hours to show in the hourly timeline."
     }
   },
-  "required": ["enabled", "position", "interval", "provider", "show_header", "show_wind", "show_precipitation", "show_forecast", "forecast_days", "forecast_type", "layout", "forecast_hours"]
+  "required": [
+    "interval",
+    "provider",
+    "show_header",
+    "show_wind",
+    "show_precipitation",
+    "show_forecast",
+    "forecast_days",
+    "forecast_type",
+    "layout",
+    "forecast_hours"
+  ]
 }

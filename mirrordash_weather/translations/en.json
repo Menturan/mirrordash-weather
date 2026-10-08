@@ -35,5 +35,6 @@
   "W": "W",
   "WNW": "WNW",
   "NW": "NW",
-  "NNW": "NNW"
+  "NNW": "NNW",
+  "error_key_rejected": "The API key was rejected. Check it in the module's settings."
 }

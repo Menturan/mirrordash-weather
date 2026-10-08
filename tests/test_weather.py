@@ -304,3 +304,18 @@ def test_parse_hourly_and_combined(base_config):
     assert len(owm_result["hourly_forecast"]) > 0
     assert owm_result["hourly_forecast"][0]["temp"] == 20.5
 
+
+@pytest.mark.asyncio
+async def test_api_key_goes_in_params_and_a_rejected_key_says_so():
+    import asyncio
+    module = WeatherModule({"provider": "weatherapi", "weatherapi_key": "secret-key"})
+    module.fetch_json = AsyncMock(return_value=(None, "rejected"))
+    module.render_template = MagicMock(return_value="<div></div>")
+    with patch("asyncio.sleep", side_effect=asyncio.CancelledError):
+        with pytest.raises(asyncio.CancelledError):
+            await module.run_loop(AsyncMock())
+    url = module.fetch_json.await_args.args[0]
+    assert "secret-key" not in url  # the key is never part of an address that could be logged
+    assert module.fetch_json.await_args.kwargs["params"]["key"] == "secret-key"
+    assert "rejected" in module.render_template.call_args.kwargs["weather"]["error"]
+

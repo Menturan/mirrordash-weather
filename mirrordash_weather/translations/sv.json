@@ -35,5 +35,6 @@
   "W": "V",
   "WNW": "VNV",
   "NW": "NV",
-  "NNW": "NNV"
+  "NNW": "NNV",
+  "error_key_rejected": "API-nyckeln godtogs inte. Kontrollera den i modulens inställningar."
 }

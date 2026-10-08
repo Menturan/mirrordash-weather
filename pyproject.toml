@@ -2,17 +2,23 @@
 name = "mirrordash-weather"
 version = "1.0.1"
 description = "Weather forecast module supporting SMHI, Open-Meteo, WeatherAPI, and OpenWeather"
+requires-python = ">=3.14"
 authors = [
     { name = "MirrorDash Developer" }
 ]
+# The mirror provides the rest (rendering, fetch_json, translations); add only what plugin.py imports
 dependencies = [
-    "jinja2",
-    "httpx",
-    "babel"
+    "babel",
 ]
 
 [project.entry-points."mirrordash.modules"]
 mirrordash_weather = "mirrordash_weather.plugin:WeatherModule"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+]
 
 [build-system]
 requires = ["hatchling"]
