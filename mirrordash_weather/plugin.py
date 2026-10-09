@@ -236,7 +236,7 @@ class WeatherModule:
     async def fetch_api(self, url: str, params: dict | None = None) -> dict:
         """The provider's answer, or the last good one when it can't be reached (fetch_json keeps it,
         also over a restart). API keys go in params: fetch_json never logs the query."""
-        data, self.last_error = await self.fetch_json(url, params=params)
+        data, self.last_error = await self.fetch_json(url, params=params, max_age=self.interval)
         return data or {}
 
     def get_hour_label(self, dt: datetime) -> str:
