@@ -1,5 +1,6 @@
 import pytest
 import datetime
+from pathlib import Path
 from zoneinfo import ZoneInfo
 from unittest.mock import MagicMock, AsyncMock, patch
 from mirrordash_weather.plugin import WeatherModule
@@ -319,3 +320,8 @@ async def test_api_key_goes_in_params_and_a_rejected_key_says_so():
     assert module.fetch_json.await_args.kwargs["params"]["key"] == "secret-key"
     assert "rejected" in module.render_template.call_args.kwargs["weather"]["error"]
 
+
+
+def test_no_never_ending_animation():
+    # A never-ending CSS animation redraws the screen 60 times a second and keeps the Pi warm: the mirror stands still
+    assert "infinite" not in (Path(__file__).parents[1] / "mirrordash_weather/templates/widget.html").read_text()

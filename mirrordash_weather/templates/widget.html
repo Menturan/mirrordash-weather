@@ -16,7 +16,7 @@
                     </div>
                     <div class="current-condition-block">
                         <div class="condition-icon-wrapper">
-                            <i data-lucide="{{ weather.current.icon }}" class="current-icon animate-pulse-subtle"></i>
+                            <i data-lucide="{{ weather.current.icon }}" class="current-icon"></i>
                         </div>
                         <span class="condition-text">{{ weather.current.condition }}</span>
                     </div>
@@ -440,17 +440,6 @@
     font-size: 11px;
     color: var(--color-dimmed-charcoal, #666666);
     margin-top: 6px;
-}
-
-/* Error style */
-/* Pulse animation */
-.animate-pulse-subtle {
-    animation: pulseSubtle 3s infinite ease-in-out;
-}
-
-@keyframes pulseSubtle {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.85; transform: scale(0.96); }
 }
 
 @keyframes weatherFadeIn {
