@@ -5,6 +5,11 @@ from zoneinfo import ZoneInfo
 from unittest.mock import MagicMock, AsyncMock
 from mirrordash_weather.plugin import WeatherModule
 
+
+class Answer(tuple):
+    """What the mirror's fetch_json gives: (data, error), and .fetched_at, when the data was downloaded."""
+    fetched_at = datetime.datetime(2026, 1, 1, 9, 30)
+
 MOCK_SMHI_DATA = {
     "referenceTime": "2026-06-03T18:00:00Z",
     # Real SMHI API uses 'timeSeries', with 'time' and 'data' dict
@@ -309,7 +314,7 @@ def test_parse_hourly_and_combined(base_config):
 @pytest.mark.asyncio
 async def test_api_key_goes_in_params_and_a_rejected_key_says_so():
     module = WeatherModule({"provider": "weatherapi", "weatherapi_key": "secret-key"})
-    module.fetch_json = AsyncMock(return_value=(None, "rejected"))
+    module.fetch_json = AsyncMock(return_value=Answer((None, "rejected")))
     module.render_template = MagicMock(return_value="<div></div>")
     await module.render()
     url = module.fetch_json.await_args.args[0]
@@ -322,3 +327,12 @@ async def test_api_key_goes_in_params_and_a_rejected_key_says_so():
 def test_no_never_ending_animation():
     # A never-ending CSS animation redraws the screen 60 times a second and keeps the Pi warm: the mirror stands still
     assert "infinite" not in (Path(__file__).parents[1] / "mirrordash_weather/templates/widget.html").read_text()
+
+
+@pytest.mark.asyncio
+async def test_last_checked_is_when_the_data_was_downloaded():
+    module = WeatherModule({"provider": "open_meteo"})
+    module.fetch_json = AsyncMock(return_value=Answer((MOCK_OPEN_METEO_DATA, None)))
+    module.render_template = MagicMock(return_value="<div></div>")
+    await module.render()
+    assert module.render_template.call_args.kwargs["last_checked"] == "09:30"  # not the time of drawing

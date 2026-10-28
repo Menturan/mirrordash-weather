@@ -1,7 +1,5 @@
-# Licensed under the PolyForm Noncommercial License 1.0.0.
-
 import logging
-from datetime import datetime, date, time, timedelta
+from datetime import datetime, date, time
 from zoneinfo import ZoneInfo
 from babel.dates import format_date as babel_format_date
 
@@ -235,7 +233,9 @@ class WeatherModule:
     async def fetch_api(self, url: str, params: dict | None = None) -> dict:
         """The provider's answer, or the last good one when it can't be reached (fetch_json keeps it,
         also over a restart; a young one is reused). API keys go in params: fetch_json never logs the query."""
-        data, self.last_error = await self.fetch_json(url, params=params)
+        answer = await self.fetch_json(url, params=params)
+        data, self.last_error = answer
+        self.fetched_at = answer.fetched_at  # when the data was downloaded, also for a saved answer
         return data or {}
 
     def get_hour_label(self, dt: datetime) -> str:
@@ -665,6 +665,7 @@ class WeatherModule:
         # Fetch data based on selected provider
         weather_info = {}
         self.last_error = None
+        self.fetched_at = None
         if self.provider == "smhi":
             raw_data = await self.fetch_api(
                 f"https://opendata-download-metfcst.smhi.se/api/category/snow1g/version/1/"
@@ -722,7 +723,7 @@ class WeatherModule:
             layout=self.layout,
             temp_unit_label=self.get_temp_unit_label(),
             wind_unit_label=self.get_wind_unit_label(),
-            last_checked=datetime.now().strftime("%H:%M")
+            last_checked=self.fetched_at.strftime("%H:%M") if self.fetched_at else None
         )
         logger.info(f"Rendering {self.name} using provider {self.provider}")
         return html

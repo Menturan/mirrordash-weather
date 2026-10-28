@@ -181,9 +181,11 @@
                 {% endif %}
             {% endif %}
             
+            {% if last_checked %}
             <div class="weather-footer">
                 <span>{{ translations.get("last_checked", "Last checked") }}: {{ last_checked }} ({{ weather.current.provider_name }})</span>
             </div>
+            {% endif %}
         {% endif %}
     </div>
 </div>
