@@ -1,6 +1,5 @@
 # Licensed under the PolyForm Noncommercial License 1.0.0.
 
-import asyncio
 import logging
 from datetime import datetime, date, time, timedelta
 from zoneinfo import ZoneInfo
@@ -235,8 +234,8 @@ class WeatherModule:
 
     async def fetch_api(self, url: str, params: dict | None = None) -> dict:
         """The provider's answer, or the last good one when it can't be reached (fetch_json keeps it,
-        also over a restart). API keys go in params: fetch_json never logs the query."""
-        data, self.last_error = await self.fetch_json(url, params=params, max_age=self.interval)
+        also over a restart; a young one is reused). API keys go in params: fetch_json never logs the query."""
+        data, self.last_error = await self.fetch_json(url, params=params)
         return data or {}
 
     def get_hour_label(self, dt: datetime) -> str:
@@ -658,84 +657,72 @@ class WeatherModule:
             "hourly_forecast": hourly_forecast[:self.forecast_hours]
         }
 
-    async def run_loop(self, broadcast_func):
-        logger.info(f"Starting {self.name} run loop")
-        while True:
-            try:
-                # Get current date/time in module local timezone
-                now_dt = datetime.now(self.tz)
-                
-                # Fetch data based on selected provider
-                weather_info = {}
-                self.last_error = None
-                if self.provider == "smhi":
-                    raw_data = await self.fetch_api(
-                        f"https://opendata-download-metfcst.smhi.se/api/category/snow1g/version/1/"
-                        f"geotype/point/lon/{round(self.longitude, 6)}/lat/{round(self.latitude, 6)}/data.json"
-                    )
-                    weather_info = self.parse_smhi(raw_data, now_dt)
+    async def render(self) -> str:
+        """The weather from the chosen provider; the mirror shows it every interval."""
+        # Get current date/time in module local timezone
+        now_dt = datetime.now(self.tz)
+        
+        # Fetch data based on selected provider
+        weather_info = {}
+        self.last_error = None
+        if self.provider == "smhi":
+            raw_data = await self.fetch_api(
+                f"https://opendata-download-metfcst.smhi.se/api/category/snow1g/version/1/"
+                f"geotype/point/lon/{round(self.longitude, 6)}/lat/{round(self.latitude, 6)}/data.json"
+            )
+            weather_info = self.parse_smhi(raw_data, now_dt)
 
-                elif self.provider == "open_meteo":
-                    raw_data = await self.fetch_api("https://api.open-meteo.com/v1/forecast", {
-                        "latitude": round(self.latitude, 4), "longitude": round(self.longitude, 4),
-                        "current": "temperature_2m,wind_speed_10m,wind_direction_10m,precipitation,weather_code",
-                        "daily": "weather_code,temperature_2m_max,temperature_2m_min",
-                        "hourly": "temperature_2m,weather_code", "timezone": self.tz.key,
-                    })
-                    weather_info = self.parse_open_meteo(raw_data, now_dt)
+        elif self.provider == "open_meteo":
+            raw_data = await self.fetch_api("https://api.open-meteo.com/v1/forecast", {
+                "latitude": round(self.latitude, 4), "longitude": round(self.longitude, 4),
+                "current": "temperature_2m,wind_speed_10m,wind_direction_10m,precipitation,weather_code",
+                "daily": "weather_code,temperature_2m_max,temperature_2m_min",
+                "hourly": "temperature_2m,weather_code", "timezone": self.tz.key,
+            })
+            weather_info = self.parse_open_meteo(raw_data, now_dt)
 
-                elif self.provider == "weatherapi":
-                    if not self.weatherapi_key:
-                        weather_info = {"error": self.translate("error_api_key", "API Key required")}
-                    else:
-                        raw_data = await self.fetch_api("https://api.weatherapi.com/v1/forecast.json", {
-                            "key": self.weatherapi_key, "q": f"{self.latitude},{self.longitude}",
-                            "days": self.forecast_days + 1, "aqi": "no",
-                        })
-                        weather_info = self.parse_weatherapi(raw_data, now_dt)
+        elif self.provider == "weatherapi":
+            if not self.weatherapi_key:
+                weather_info = {"error": self.translate("error_api_key", "API Key required")}
+            else:
+                raw_data = await self.fetch_api("https://api.weatherapi.com/v1/forecast.json", {
+                    "key": self.weatherapi_key, "q": f"{self.latitude},{self.longitude}",
+                    "days": self.forecast_days + 1, "aqi": "no",
+                })
+                weather_info = self.parse_weatherapi(raw_data, now_dt)
 
-                elif self.provider == "openweathermap":
-                    if not self.openweathermap_key:
-                        weather_info = {"error": self.translate("error_api_key", "API Key required")}
-                    else:
-                        raw_data = await self.fetch_api("https://api.openweathermap.org/data/2.5/forecast", {
-                            "lat": self.latitude, "lon": self.longitude,
-                            "appid": self.openweathermap_key, "units": "metric",
-                        })
-                        weather_info = self.parse_openweathermap(raw_data, now_dt)
+        elif self.provider == "openweathermap":
+            if not self.openweathermap_key:
+                weather_info = {"error": self.translate("error_api_key", "API Key required")}
+            else:
+                raw_data = await self.fetch_api("https://api.openweathermap.org/data/2.5/forecast", {
+                    "lat": self.latitude, "lon": self.longitude,
+                    "appid": self.openweathermap_key, "units": "metric",
+                })
+                weather_info = self.parse_openweathermap(raw_data, now_dt)
 
-                else:
-                    logger.error(f"Unknown weather provider: {self.provider}")
-                    weather_info = {"error": f"Unknown provider: {self.provider}"}
+        else:
+            logger.error(f"Unknown weather provider: {self.provider}")
+            weather_info = {"error": f"Unknown provider: {self.provider}"}
 
-                # Nothing to show: say why
-                if not weather_info:
-                    weather_info = {"error": self.translate("error_key_rejected", "The API key was rejected. Check it in the module's settings.")
-                                    if self.last_error == "rejected" else self.translate("error_fetch", "Fetch failed")}
+        # Nothing to show: say why
+        if not weather_info:
+            weather_info = {"error": self.translate("error_key_rejected", "The API key was rejected. Check it in the module's settings.")
+                            if self.last_error == "rejected" else self.translate("error_fetch", "Fetch failed")}
 
-                # Render template
-                html = self.render_template(
-                    "widget.html",
-                    weather=weather_info,
-                    show_header=self.show_header,
-                    show_wind=self.show_wind,
-                    show_precipitation=self.show_precipitation,
-                    show_forecast=self.show_forecast,
-                    forecast_type=self.forecast_type,
-                    layout=self.layout,
-                    temp_unit_label=self.get_temp_unit_label(),
-                    wind_unit_label=self.get_wind_unit_label(),
-                    last_checked=datetime.now().strftime("%H:%M")
-                )
-                
-                # Broadcast updates
-                logger.info(f"Broadcasting update for {self.name} using provider {self.provider}")
-                await broadcast_func(self.name, html)
-                
-            except asyncio.CancelledError:
-                logger.info(f"Stopping WeatherModule event loop.")
-                raise
-            except Exception as e:
-                logger.error(f"Error in WeatherModule loop: {e}", exc_info=True)
-                
-            await asyncio.sleep(self.interval)
+        # Render template
+        html = self.render_template(
+            "widget.html",
+            weather=weather_info,
+            show_header=self.show_header,
+            show_wind=self.show_wind,
+            show_precipitation=self.show_precipitation,
+            show_forecast=self.show_forecast,
+            forecast_type=self.forecast_type,
+            layout=self.layout,
+            temp_unit_label=self.get_temp_unit_label(),
+            wind_unit_label=self.get_wind_unit_label(),
+            last_checked=datetime.now().strftime("%H:%M")
+        )
+        logger.info(f"Rendering {self.name} using provider {self.provider}")
+        return html

@@ -2,7 +2,7 @@ import pytest
 import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import MagicMock, AsyncMock
 from mirrordash_weather.plugin import WeatherModule
 
 MOCK_SMHI_DATA = {
@@ -308,13 +308,10 @@ def test_parse_hourly_and_combined(base_config):
 
 @pytest.mark.asyncio
 async def test_api_key_goes_in_params_and_a_rejected_key_says_so():
-    import asyncio
     module = WeatherModule({"provider": "weatherapi", "weatherapi_key": "secret-key"})
     module.fetch_json = AsyncMock(return_value=(None, "rejected"))
     module.render_template = MagicMock(return_value="<div></div>")
-    with patch("asyncio.sleep", side_effect=asyncio.CancelledError):
-        with pytest.raises(asyncio.CancelledError):
-            await module.run_loop(AsyncMock())
+    await module.render()
     url = module.fetch_json.await_args.args[0]
     assert "secret-key" not in url  # the key is never part of an address that could be logged
     assert module.fetch_json.await_args.kwargs["params"]["key"] == "secret-key"
