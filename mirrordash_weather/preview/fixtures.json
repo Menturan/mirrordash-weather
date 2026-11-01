@@ -1,0 +1,8 @@
+{
+  "captured": "2026-11-02",
+  "answers": {
+    "opendata-download-metfcst.smhi.se/api/category/snow1g/*": "smhi.json",
+    "api.open-meteo.com/v1/forecast": "open-meteo.json",
+    "api.weatherapi.com/v1/forecast.json": "weatherapi.json"
+  }
+}
