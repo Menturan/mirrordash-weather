@@ -89,6 +89,22 @@
       "title": "Layout Style",
       "description": "Select the visual style: horizontal (wider grid timeline/columns) or vertical (original list/rows)."
     },
+    "warnings": {
+      "type": "string",
+      "default": "warnings",
+      "enum": [
+        "warnings",
+        "all",
+        "off"
+      ],
+      "enum_titles": [
+        "Warnings (yellow, orange, red)",
+        "Warnings and messages",
+        "Off"
+      ],
+      "title": "Weather Warnings",
+      "description": "Weather warnings for your location, under the current weather. From SMHI and WeatherAPI; Open-Meteo and OpenWeather have none. Messages are SMHI's calmer notices, such as a risk of water shortage."
+    },
     "forecast_hours": {
       "type": "integer",
       "default": 6,
@@ -108,6 +124,7 @@
     "forecast_days",
     "forecast_type",
     "layout",
-    "forecast_hours"
+    "forecast_hours",
+    "warnings"
   ]
 }

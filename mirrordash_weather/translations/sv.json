@@ -36,5 +36,11 @@
   "WNW": "VNV",
   "NW": "NV",
   "NNW": "NNV",
-  "error_key_rejected": "API-nyckeln godtogs inte. Kontrollera den i modulens inställningar."
+  "error_key_rejected": "API-nyckeln godtogs inte. Kontrollera den i modulens inställningar.",
+  "warning": "Varning",
+  "warning_message": "Meddelande",
+  "warning_level": "{level} varning",
+  "warning_from": "Från {start}",
+  "warning_until": "Tills {end}",
+  "warning_until_further_notice": "Tills vidare"
 }

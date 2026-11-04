@@ -16,6 +16,7 @@ Weather forecast widget for MirrorDash. Displays current conditions and a config
 ## Features
 - Supports SMHI Open Data, Open-Meteo, WeatherAPI.com, and OpenWeatherMap APIs.
 - Displays wind speed, precipitation, and multi-day daily forecasts.
+- Weather warnings for the mirror's location under the current weather: SMHI's impact-based warnings (yellow, orange, red; its messages too if you choose) and WeatherAPI's alerts. Open-Meteo has none, OpenWeather only in its paid One Call API. **Weather Warnings** turns them off.
 - Automatically reads coordinate, timezone, unit, and language settings from global configuration.
 
 ## Installation

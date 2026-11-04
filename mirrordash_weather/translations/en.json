@@ -36,5 +36,11 @@
   "WNW": "WNW",
   "NW": "NW",
   "NNW": "NNW",
-  "error_key_rejected": "The API key was rejected. Check it in the module's settings."
+  "error_key_rejected": "The API key was rejected. Check it in the module's settings.",
+  "warning": "Warning",
+  "warning_message": "Message",
+  "warning_level": "{level} warning",
+  "warning_from": "From {start}",
+  "warning_until": "Until {end}",
+  "warning_until_further_notice": "Until further notice"
 }

@@ -1,9 +1,11 @@
-import pytest
 import datetime
 from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock
 from zoneinfo import ZoneInfo
-from unittest.mock import MagicMock, AsyncMock
-from mirrordash_weather.plugin import WeatherModule
+
+import pytest
+
+from mirrordash_weather.plugin import SMHI_WARNINGS_URL, WeatherModule, in_area
 
 
 class Answer(tuple):
@@ -336,3 +338,86 @@ async def test_last_checked_is_when_the_data_was_downloaded():
     module.render_template = MagicMock(return_value="<div></div>")
     await module.render()
     assert module.render_template.call_args.kwargs["last_checked"] == "09:30"  # not the time of drawing
+
+
+# --- Weather warnings ---
+
+STOCKHOLM = [[17.5, 59.0], [18.5, 59.0], [18.5, 59.6], [17.5, 59.6], [17.5, 59.0]]
+LAPLAND = [[15.0, 66.0], [20.0, 66.0], [20.0, 69.0], [15.0, 69.0], [15.0, 66.0]]
+NOW = datetime.datetime(2026, 11, 4, 14, 0, tzinfo=ZoneInfo("Europe/Stockholm"))
+
+
+def smhi_warning(code, level_sv, title, ring, start, end=None):
+    area = {"warningLevel": {"sv": level_sv, "en": level_sv, "code": code}, "eventDescription": {"sv": title, "en": title},
+            "approximateStart": start, "area": {"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [ring]}}}
+    if end:
+        area["approximateEnd"] = end
+    return {"event": {"sv": title, "en": title}, "warningAreas": [area]}
+
+
+SMHI_WARNINGS = [
+    smhi_warning("MESSAGE", "Meddelande", "Risk för vattenbrist", STOCKHOLM, "2026-05-04T22:00:00.000Z"),
+    smhi_warning("YELLOW", "Gul", "Vind", STOCKHOLM, "2026-11-04T17:00:00.000Z", "2026-11-05T05:00:00.000Z"),
+    smhi_warning("ORANGE", "Orange", "Vind på kalfjället", LAPLAND, "2026-11-04T11:00:00.000Z", "2026-11-05T05:00:00.000Z"),
+    smhi_warning("RED", "Röd", "Gammal storm", STOCKHOLM, "2026-11-01T00:00:00.000Z", "2026-11-02T00:00:00.000Z"),
+]
+
+
+def test_in_area_polygons_holes_and_multipolygons():
+    square = [[0, 0], [10, 0], [10, 10], [0, 10], [0, 0]]
+    hole = [[4, 4], [6, 4], [6, 6], [4, 6], [4, 4]]
+    assert in_area(2, 2, {"type": "Polygon", "coordinates": [square]})
+    assert not in_area(12, 2, {"type": "Polygon", "coordinates": [square]})
+    assert not in_area(5, 5, {"type": "Polygon", "coordinates": [square, hole]})  # in the hole
+    assert in_area(5, 5, {"type": "MultiPolygon", "coordinates": [[hole], [square]]})
+    assert not in_area(5, 5, None)
+
+
+def test_smhi_warnings_for_the_mirrors_place_only(base_config):
+    module = WeatherModule({**base_config, "globals": {**base_config["globals"], "language": "sv"}})
+    module.translations = {"warning_level": "{level} varning", "today": "Idag", "tomorrow": "Imorgon",
+                           "warning_until_further_notice": "Tills vidare"}
+    warnings = module.parse_smhi_warnings(SMHI_WARNINGS, NOW)
+    # Not Lapland's (another place), not the storm that is over, not the message (hidden by default)
+    assert [(w["level"], w["title"], w["when"]) for w in warnings] == [("Gul varning", "Vind", "Idag 18:00 – imorgon 06:00")]
+
+    module.warnings = "all"
+    message = module.parse_smhi_warnings(SMHI_WARNINGS, NOW)[0]
+    assert (message["level"], message["message"], message["when"]) == ("Meddelande", True, "Tills vidare")
+
+
+def test_warning_when(base_config):
+    module = WeatherModule(base_config)
+    at = lambda hour, day=4: datetime.datetime(2026, 11, day, hour, tzinfo=ZoneInfo("Europe/Stockholm"))
+    assert module.warning_when(at(18), at(6, 5), NOW) == "Today 18:00 – tomorrow 06:00"
+    assert module.warning_when(at(9), at(6, 5), NOW) == "Until tomorrow 06:00"  # already begun
+    assert module.warning_when(at(18), None, NOW) == "From today 18:00"
+    assert module.warning_when(at(9, 1), None, NOW) == "Until further notice"
+    assert module.warning_when(at(9, 6), None, NOW).startswith("From fri")
+
+
+@pytest.mark.asyncio
+async def test_warnings_most_severe_first_and_off_fetches_nothing(base_config):
+    module = WeatherModule(base_config)
+    module.fetch_json = AsyncMock(return_value=Answer((SMHI_WARNINGS + [smhi_warning(
+        "ORANGE", "Orange", "Snöfall", STOCKHOLM, "2026-11-04T10:00:00.000Z")], None)))
+    warnings = await module.fetch_warnings(None, NOW)
+    module.fetch_json.assert_awaited_once_with(SMHI_WARNINGS_URL)
+    assert [w["title"] for w in warnings] == ["Snöfall", "Vind"]
+
+    module.warnings = "off"
+    module.fetch_json.reset_mock()
+    assert await module.fetch_warnings(None, NOW) == []
+    module.fetch_json.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_weatherapi_alerts_once_each(base_config):
+    module = WeatherModule({**base_config, "provider": "weatherapi"})
+    alert = {"event": "Moderate wind warning", "severity": "Moderate",
+             "effective": "2026-11-04T16:00:00+00:00", "expires": "2026-11-05T05:00:00+00:00"}
+    data = {"alerts": {"alert": [alert, alert, {**alert, "event": "Minor fog", "severity": "Minor"},
+                                 {**alert, "event": "Old", "expires": "2026-11-01T00:00:00+00:00"}]}}
+    found = await module.fetch_warnings(data, NOW)
+    assert [w["title"] for w in found] == ["Moderate wind warning"]  # once, not the copy, the minor or the old one
+    assert found[0]["level"] == "Warning" and found[0]["when"] == "Today 17:00 – tomorrow 06:00"

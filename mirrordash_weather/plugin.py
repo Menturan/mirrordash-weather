@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime, date, time
 from zoneinfo import ZoneInfo
+from babel.core import UnknownLocaleError
 from babel.dates import format_date as babel_format_date
 
 logger = logging.getLogger("mirrordash.modules.mirrordash_weather")
@@ -157,6 +158,36 @@ def get_wind_direction_cardinal(deg: float) -> str:
     idx = int((deg + 11.25) / 22.5) % 16
     return directions[idx]
 
+
+SMHI_WARNINGS_URL = "https://opendata-download-warnings.smhi.se/ibww/api/version/1/warning.json"
+WARNING_ORDER = {"RED": 0, "ORANGE": 1, "YELLOW": 2, "MESSAGE": 3}
+MAX_WARNINGS = 3  # ponytail: the most severe three; more would push the forecast far down the corner
+
+
+def parse_time(text) -> datetime | None:
+    try:
+        return datetime.fromisoformat(text)
+    except (TypeError, ValueError):
+        return None
+
+
+def in_ring(lon: float, lat: float, ring: list) -> bool:
+    """Ray casting: whether the point is inside the ring of [lon, lat] corners."""
+    inside = False
+    for (x1, y1), (x2, y2) in zip(ring, ring[1:] + ring[:1]):
+        if (y1 > lat) != (y2 > lat) and lon < x1 + (lat - y1) * (x2 - x1) / (y2 - y1):
+            inside = not inside
+    return inside
+
+
+def in_area(lon: float, lat: float, geometry: dict | None) -> bool:
+    """Whether a GeoJSON Polygon or MultiPolygon covers the point (inside an outer ring, outside its holes)."""
+    kind, coords = (geometry or {}).get("type"), (geometry or {}).get("coordinates") or []
+    polygons = [coords] if kind == "Polygon" else coords if kind == "MultiPolygon" else []
+    return any(rings and in_ring(lon, lat, rings[0]) and not any(in_ring(lon, lat, hole) for hole in rings[1:])
+               for rings in polygons)
+
+
 class WeatherModule:
     def __init__(self, config):
         self.config = config
@@ -190,6 +221,7 @@ class WeatherModule:
         self.forecast_type = config.get("forecast_type", "daily")
         self.layout = config.get("layout", "horizontal")
         self.forecast_hours = config.get("forecast_hours", 6)
+        self.warnings = config.get("warnings", "warnings")  # "warnings" (yellow and up), "all" (with messages) or "off"
         
         self.temp_unit = global_cfg.get("temperature_unit", "C")
         self.dist_unit = global_cfg.get("distance_unit", "km")
@@ -256,6 +288,87 @@ class WeatherModule:
             return formatted.upper()
         except Exception:
             return d.strftime("%a").upper()
+
+    def warning_moment(self, moment: datetime, now_dt: datetime) -> str:
+        """"today 18:00", "tomorrow 06:00" or "fri 6 nov 06:00", lower case for the middle of a sentence."""
+        local = moment.astimezone(self.tz)
+        diff_days = (local.date() - now_dt.date()).days
+        if diff_days == 0:
+            day = self.translate("today", "Today")
+        elif diff_days == 1:
+            day = self.translate("tomorrow", "Tomorrow")
+        else:
+            try:
+                day = babel_format_date(local.date(), format="EEE d MMM", locale=self.lang)
+            except (ValueError, UnknownLocaleError):
+                day = local.strftime("%a %d %b")
+        return f"{day.lower()} {self.get_hour_label(local)}"
+
+    def warning_when(self, start: datetime | None, end: datetime | None, now_dt: datetime) -> str:
+        """When a warning applies: "Today 18:00 – tomorrow 06:00", "Until tomorrow 06:00" once it has begun."""
+        if start and start > now_dt:
+            text = (f"{self.warning_moment(start, now_dt)} – {self.warning_moment(end, now_dt)}" if end else
+                    self.translate("warning_from", "From {start}").format(start=self.warning_moment(start, now_dt)))
+        elif end:
+            text = self.translate("warning_until", "Until {end}").format(end=self.warning_moment(end, now_dt))
+        else:
+            text = self.translate("warning_until_further_notice", "Until further notice")
+        return text[:1].upper() + text[1:]
+
+    def parse_smhi_warnings(self, data, now_dt: datetime) -> list[dict]:
+        """SMHI's warnings whose area covers the mirror's place; messages only when the owner asked for them."""
+        lang = "sv" if self.lang == "sv" else "en"
+        found = []
+        for warning in data if isinstance(data, list) else []:
+            for area in warning.get("warningAreas") or []:
+                level = area.get("warningLevel") or {}
+                code, end = level.get("code"), parse_time(area.get("approximateEnd"))
+                if (code not in WARNING_ORDER or (code == "MESSAGE" and self.warnings != "all") or (end and end < now_dt)
+                        or not in_area(float(self.longitude), float(self.latitude), (area.get("area") or {}).get("geometry"))):
+                    continue
+                name = level.get(lang) or code
+                found.append({
+                    "order": WARNING_ORDER[code],
+                    "message": code == "MESSAGE",
+                    "level": name if code == "MESSAGE" else self.translate("warning_level", "{level} warning").format(level=name),
+                    "title": (area.get("eventDescription") or {}).get(lang) or (warning.get("event") or {}).get(lang, ""),
+                    "when": self.warning_when(parse_time(area.get("approximateStart")), end, now_dt),
+                    "source": "SMHI",
+                })
+        return found
+
+    def parse_weatherapi_warnings(self, data, now_dt: datetime) -> list[dict]:
+        """WeatherAPI's alerts (in Europe from MeteoAlarm); Minor ones count as messages."""
+        found = []
+        for alert in ((data or {}).get("alerts") or {}).get("alert") or []:
+            severity, end = alert.get("severity"), parse_time(alert.get("expires"))
+            message = severity == "Minor"
+            if (message and self.warnings != "all") or (end and end < now_dt):
+                continue
+            found.append({
+                "order": 3 if message else {"Extreme": 0, "Severe": 1}.get(severity, 2),
+                "message": message,
+                "level": self.translate("warning_message", "Message") if message else self.translate("warning", "Warning"),
+                "title": alert.get("event") or alert.get("headline", ""),
+                "when": self.warning_when(parse_time(alert.get("effective")), end, now_dt),
+                "source": "WeatherAPI",
+            })
+        return found
+
+    async def fetch_warnings(self, raw_data, now_dt: datetime) -> list[dict]:
+        """The warnings to show under the current weather, most severe first, each once."""
+        if self.warnings == "off":
+            return []
+        if self.provider == "smhi":
+            # Straight from fetch_json, not fetch_api: the forecast's last_error and fetched_at stay the forecast's
+            data, _error = await self.fetch_json(SMHI_WARNINGS_URL)
+            found = self.parse_smhi_warnings(data, now_dt)
+        elif self.provider == "weatherapi":
+            found = self.parse_weatherapi_warnings(raw_data, now_dt)
+        else:
+            return []  # Open-Meteo has no warnings; OpenWeather has them only in its paid One Call API
+        unique = {(w["title"], w["when"]): w for w in found}  # MeteoAlarm repeats an alert once per language
+        return sorted(unique.values(), key=lambda w: w["order"])[:MAX_WARNINGS]
 
     def parse_smhi(self, data: dict, today_date: date) -> dict:
         if not data or "timeSeries" not in data:
@@ -664,6 +777,7 @@ class WeatherModule:
         
         # Fetch data based on selected provider
         weather_info = {}
+        raw_data = None
         self.last_error = None
         self.fetched_at = None
         if self.provider == "smhi":
@@ -688,7 +802,7 @@ class WeatherModule:
             else:
                 raw_data = await self.fetch_api("https://api.weatherapi.com/v1/forecast.json", {
                     "key": self.weatherapi_key, "q": f"{self.latitude},{self.longitude}",
-                    "days": self.forecast_days + 1, "aqi": "no",
+                    "days": self.forecast_days + 1, "aqi": "no", "alerts": "no" if self.warnings == "off" else "yes",
                 })
                 weather_info = self.parse_weatherapi(raw_data, now_dt)
 
@@ -711,10 +825,13 @@ class WeatherModule:
             weather_info = {"error": self.translate("error_key_rejected", "The API key was rejected. Check it in the module's settings.")
                             if self.last_error == "rejected" else self.translate("error_fetch", "Fetch failed")}
 
+        warnings = [] if "error" in weather_info else await self.fetch_warnings(raw_data, now_dt)
+
         # Render template
         html = self.render_template(
             "widget.html",
             weather=weather_info,
+            warnings=warnings,
             show_header=self.show_header,
             show_wind=self.show_wind,
             show_precipitation=self.show_precipitation,

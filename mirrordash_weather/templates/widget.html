@@ -42,6 +42,21 @@
                 {% endif %}
             </div>
 
+            {% if warnings %}
+            <div class="weather-warnings">
+                {% for w in warnings %}
+                <div class="weather-warning">
+                    <div class="weather-warning__level{% if w.message %} is-message{% endif %}">
+                        <i data-lucide="{{ 'info' if w.message else 'alert-triangle' }}"></i>
+                        <span>{{ w.level }} · {{ w.source }}</span>
+                    </div>
+                    <div class="weather-warning__title">{{ w.title }}</div>
+                    <div class="weather-warning__when">{{ w.when }}</div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
             <!-- Forecast Section -->
             {% if show_forecast %}
                 {% if forecast_type == "daily" and weather.forecast %}
@@ -191,6 +206,63 @@
 </div>
 
 <style>
+/* Warnings: the same look as Krisinformation's alerts */
+.weather-warnings {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 16px 0;
+}
+
+.weather-warning {
+    display: flex;
+    flex-direction: column;
+    border-left: 2px solid var(--color-dimmed-charcoal, #666666);
+    padding-left: 12px;
+}
+
+.weather-warning__level {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--color-standard-gray, #999999);
+}
+
+.weather-warning__level svg,
+.weather-warning__level i {
+    width: 14px;
+    height: 14px;
+    stroke-width: 2px;
+    flex: none;
+    color: var(--color-status-warning, #f87171);
+}
+
+.weather-warning__level.is-message svg,
+.weather-warning__level.is-message i {
+    color: var(--color-standard-gray, #999999);
+}
+
+.weather-warning__title {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--color-high-contrast, #ffffff);
+    word-break: break-word;
+}
+
+.weather-warning__when {
+    font-size: 13px;
+    font-weight: 300;
+    line-height: 1.4;
+    margin-top: 2px;
+    color: var(--color-standard-gray, #999999);
+}
+
 .weather-container {
     display: flex;
     flex-direction: column;
