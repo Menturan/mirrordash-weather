@@ -4,12 +4,6 @@
   "description": "Current weather and forecast for your location, from SMHI, Open-Meteo, WeatherAPI or OpenWeather.",
   "type": "object",
   "properties": {
-    "interval": {
-      "type": "integer",
-      "default": 900,
-      "title": "Update Interval (Seconds)",
-      "description": "Time to wait between data refreshes (15 minutes recommended)."
-    },
     "provider": {
       "type": "string",
       "default": "smhi",
@@ -27,14 +21,24 @@
       "default": "",
       "title": "WeatherAPI.com Key",
       "description": "API Key for WeatherAPI.com (required if WeatherAPI is selected).",
-      "format": "password"
+      "format": "password",
+      "show_if": {
+        "provider": [
+          "weatherapi"
+        ]
+      }
     },
     "openweathermap_key": {
       "type": "string",
       "default": "",
       "title": "OpenWeatherMap Key",
       "description": "API Key for OpenWeatherMap (required if OpenWeatherMap is selected).",
-      "format": "password"
+      "format": "password",
+      "show_if": {
+        "provider": [
+          "openweathermap"
+        ]
+      }
     },
     "show_header": {
       "type": "boolean",
@@ -66,7 +70,16 @@
       "minimum": 1,
       "maximum": 7,
       "title": "Forecast Days",
-      "description": "Number of days to show in the daily forecast."
+      "description": "Number of days to show in the daily forecast.",
+      "show_if": {
+        "show_forecast": [
+          true
+        ],
+        "forecast_type": [
+          "daily",
+          "combined"
+        ]
+      }
     },
     "forecast_type": {
       "type": "string",
@@ -77,7 +90,12 @@
         "combined"
       ],
       "title": "Forecast Type",
-      "description": "Select forecast data: daily (upcoming days), hourly (upcoming hours), or combined (both today's hours and upcoming days)."
+      "description": "Select forecast data: daily (upcoming days), hourly (upcoming hours), or combined (both today's hours and upcoming days).",
+      "show_if": {
+        "show_forecast": [
+          true
+        ]
+      }
     },
     "layout": {
       "type": "string",
@@ -103,7 +121,13 @@
         "Off"
       ],
       "title": "Weather Warnings",
-      "description": "Weather warnings for your location, under the current weather. From SMHI and WeatherAPI; Open-Meteo and OpenWeather have none. Messages are SMHI's calmer notices, such as a risk of water shortage."
+      "description": "Weather warnings for your location, under the current weather. From SMHI and WeatherAPI; Open-Meteo and OpenWeather have none. Messages are SMHI's calmer notices, such as a risk of water shortage.",
+      "show_if": {
+        "provider": [
+          "smhi",
+          "weatherapi"
+        ]
+      }
     },
     "forecast_hours": {
       "type": "integer",
@@ -111,7 +135,23 @@
       "minimum": 1,
       "maximum": 24,
       "title": "Forecast Hours",
-      "description": "Number of hours to show in the hourly timeline."
+      "description": "Number of hours to show in the hourly timeline.",
+      "show_if": {
+        "show_forecast": [
+          true
+        ],
+        "forecast_type": [
+          "hourly",
+          "combined"
+        ]
+      }
+    },
+    "interval": {
+      "type": "integer",
+      "default": 900,
+      "title": "Update Interval (Seconds)",
+      "description": "Time to wait between data refreshes (15 minutes recommended).",
+      "group": "Advanced"
     }
   },
   "required": [
