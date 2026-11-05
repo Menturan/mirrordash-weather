@@ -14,7 +14,13 @@
         "openweathermap"
       ],
       "title": "Weather Provider",
-      "description": "Select weather provider. SMHI is recommended for the Nordics, Open-Meteo is key-less and global, WeatherAPI and OpenWeather require API keys."
+      "description": "Select weather provider. SMHI is recommended for the Nordics, Open-Meteo is key-less and global, WeatherAPI and OpenWeather require API keys.",
+      "enum_titles": [
+        "SMHI",
+        "Open-Meteo",
+        "WeatherAPI",
+        "OpenWeatherMap"
+      ]
     },
     "weatherapi_key": {
       "type": "string",
@@ -79,7 +85,8 @@
           "daily",
           "combined"
         ]
-      }
+      },
+      "format": "slider"
     },
     "forecast_type": {
       "type": "string",
@@ -95,7 +102,12 @@
         "show_forecast": [
           true
         ]
-      }
+      },
+      "enum_titles": [
+        "Days",
+        "Hours",
+        "Hours and days"
+      ]
     },
     "layout": {
       "type": "string",
@@ -105,7 +117,11 @@
         "vertical"
       ],
       "title": "Layout Style",
-      "description": "Select the visual style: horizontal (wider grid timeline/columns) or vertical (original list/rows)."
+      "description": "Select the visual style: horizontal (wider grid timeline/columns) or vertical (original list/rows).",
+      "enum_titles": [
+        "Columns",
+        "Rows"
+      ]
     },
     "warnings": {
       "type": "string",
@@ -144,7 +160,8 @@
           "hourly",
           "combined"
         ]
-      }
+      },
+      "format": "slider"
     },
     "interval": {
       "type": "integer",
