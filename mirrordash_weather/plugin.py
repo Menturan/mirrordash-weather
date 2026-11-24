@@ -1,8 +1,11 @@
+import asyncio
 import logging
 from datetime import datetime, date, time
 from zoneinfo import ZoneInfo
 from babel.core import UnknownLocaleError
 from babel.dates import format_date as babel_format_date
+
+from .local_readings import FRESH_SECONDS, LocalReadings, now, parse_humidity, parse_temperature
 
 logger = logging.getLogger("mirrordash.modules.mirrordash_weather")
 
@@ -223,6 +226,10 @@ class WeatherModule:
         self.forecast_hours = config.get("forecast_hours", 6)
         self.warnings = config.get("warnings", "warnings")  # "warnings" (yellow and up), "all" (with messages) or "off"
         
+        self.local = LocalReadings()
+        self.stale_timer = None  # the pending re-render for when the newest local reading goes stale
+        self.subscribe_local_readings(config)
+
         self.temp_unit = global_cfg.get("temperature_unit", "C")
         self.dist_unit = global_cfg.get("distance_unit", "km")
         self.time_format = global_cfg.get("time_format", "24h")
@@ -237,6 +244,55 @@ class WeatherModule:
             f"Initializing WeatherModule: provider={self.provider}, lat={self.latitude}, "
             f"lon={self.longitude}, tz={timezone_name}, lang={self.lang}, units={self.temp_unit}/{self.dist_unit}"
         )
+
+    def subscribe_local_readings(self, config) -> None:
+        """Listen to exactly the events the owner typed: the setting is the allow-list.
+        Not in the admin page's preview, where events reach no one anyway."""
+        if not self.event_bus or config.get("preview"):
+            return
+        for setting, callback in (("outdoor_temperature_event", self.on_outdoor_temperature),
+                                  ("outdoor_humidity_event", self.on_outdoor_humidity)):
+            name = (config.get(setting) or "").strip()
+            if name:
+                self.event_bus.subscribe(name, callback)
+
+    # async: the event bus runs these on the app's loop, where changed.set() and call_later are safe
+    async def on_outdoor_temperature(self, data) -> None:
+        celsius = parse_temperature(data)
+        if celsius is not None:
+            self.local.store_temperature(celsius)
+            self.local_reading_arrived()
+
+    async def on_outdoor_humidity(self, data) -> None:
+        percent = parse_humidity(data)
+        if percent is not None:
+            self.local.store_humidity(percent)
+            self.local_reading_arrived()
+
+    def local_reading_arrived(self) -> None:
+        """Draw at once (the provider's answer is reused, so no new API call), and again just after
+        this reading goes stale, so the provider's value returns even with a long interval."""
+        self.request_render()
+        if self.stale_timer:
+            self.stale_timer.cancel()
+        self.stale_timer = asyncio.get_running_loop().call_later(FRESH_SECONDS + 1, self.request_render)
+
+    def request_render(self) -> None:
+        changed = getattr(self, "changed", None)  # the mirror adds it (MirrorDash 0.10)
+        if changed is not None:
+            changed.set()
+
+    def apply_local_readings(self, weather_info: dict) -> tuple[bool, int | None]:
+        """Put the own sensor's temperature in weather_info; returns (temperature is local, local humidity).
+        A weather error stays as it is."""
+        if "error" in weather_info:
+            return False, None
+        moment = now()  # the readings keep monotonic time, not the clock
+        humidity = self.local.fresh_humidity(moment)
+        celsius = self.local.fresh_temperature(moment)
+        if celsius is not None:
+            weather_info["current"]["temp"] = self.convert_temp(celsius)  # formatted like the provider's
+        return celsius is not None, None if humidity is None else round(humidity)
 
     def translate(self, key: str, default: str = None) -> str:
         if not hasattr(self, "translations") or not self.translations:
@@ -825,6 +881,8 @@ class WeatherModule:
             weather_info = {"error": self.translate("error_key_rejected", "The API key was rejected. Check it in the module's settings.")
                             if self.last_error == "rejected" else self.translate("error_fetch", "Fetch failed")}
 
+        local_temp, local_humidity = self.apply_local_readings(weather_info)
+
         warnings = [] if "error" in weather_info else await self.fetch_warnings(raw_data, now_dt)
 
         # Render template
@@ -840,6 +898,8 @@ class WeatherModule:
             layout=self.layout,
             temp_unit_label=self.get_temp_unit_label(),
             wind_unit_label=self.get_wind_unit_label(),
+            local_temp=local_temp,
+            local_humidity=local_humidity,
             last_checked=self.fetched_at.strftime("%H:%M") if self.fetched_at else None
         )
         logger.info(f"Rendering {self.name} using provider {self.provider}")

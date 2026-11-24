@@ -19,6 +19,16 @@ Weather forecast widget for MirrorDash. Displays current conditions and a config
 - Weather warnings for the mirror's location under the current weather: SMHI's impact-based warnings (yellow, orange, red; its messages too if you choose) and WeatherAPI's alerts. Open-Meteo has none, OpenWeather only in its paid One Call API. **Weather Warnings** turns them off.
 - Automatically reads coordinate, timezone, unit, and language settings from global configuration.
 
+## Your own outdoor sensor
+
+**Outdoor Temperature From** and **Outdoor Humidity From** (under *From Other Modules*) take the public event
+name of any module that shares a reading, for example `mirrordash_homeassistant.sensor.outdoor_temperature`.
+The module must send `{"value": 3.4, "unit": "°C"}` (temperature: `°C`, `C`, `°F` or `F`; humidity: `%`).
+While readings arrive, the card shows your temperature instead of the provider's current one, and your humidity
+with the current details, each with a small house icon. After 10 minutes without a reading the provider's
+temperature comes back and the humidity row goes. The forecast, wind and the rest stay from the provider.
+Leave a setting empty to turn it off.
+
 ## Installation
 
 On the mirror's admin page, open **Modules**: the module is in the list, install it with one click.

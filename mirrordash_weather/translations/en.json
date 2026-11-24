@@ -42,5 +42,6 @@
   "warning_level": "{level} warning",
   "warning_from": "From {start}",
   "warning_until": "Until {end}",
-  "warning_until_further_notice": "Until further notice"
+  "warning_until_further_notice": "Until further notice",
+  "own_sensor": "Own sensor"
 }

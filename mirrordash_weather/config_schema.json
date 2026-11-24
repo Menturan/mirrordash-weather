@@ -164,6 +164,24 @@
       },
       "format": "slider"
     },
+    "outdoor_temperature_event": {
+      "type": "string",
+      "default": "",
+      "title": "Outdoor Temperature From",
+      "description": "The public event of a module that sends your own outdoor temperature, such as mirrordash_homeassistant.sensor.outdoor_temperature. It must send {\"value\": 3.4, \"unit\": \"°C\"}. Replaces the provider's current temperature while readings arrive; after 10 minutes without one the provider's comes back. Empty: off.",
+      "pattern": "([A-Za-z0-9_]+\\.[A-Za-z0-9_.:-]{1,100})?",
+      "pattern_message": "An event name: a module's package name, a dot and the event, such as mirrordash_homeassistant.sensor.outdoor_temperature",
+      "group": "From Other Modules"
+    },
+    "outdoor_humidity_event": {
+      "type": "string",
+      "default": "",
+      "title": "Outdoor Humidity From",
+      "description": "The public event of a module that sends your own outdoor humidity, such as mirrordash_homeassistant.sensor.outdoor_humidity. It must send {\"value\": 82, \"unit\": \"%\"}. Shown with the current details while readings arrive; after 10 minutes without one it disappears. Empty: off.",
+      "pattern": "([A-Za-z0-9_]+\\.[A-Za-z0-9_.:-]{1,100})?",
+      "pattern_message": "An event name: a module's package name, a dot and the event, such as mirrordash_homeassistant.sensor.outdoor_humidity",
+      "group": "From Other Modules"
+    },
     "interval": {
       "type": "integer",
       "default": 900,

@@ -1,3 +1,4 @@
+{% set own_sensor = translations.get("own_sensor", "Own sensor") %}
 <div class="weather-container layout-{{ layout }} type-{{ forecast_type }}">
     {% if show_header %}
     <h2 class="module-header">{{ translations.get("title", "Weather") }}</h2>
@@ -13,6 +14,7 @@
                     <div class="current-temp-block">
                         <span class="current-temp">{{ weather.current.temp }}</span>
                         <span class="temp-unit">{{ temp_unit_label }}</span>
+                        {% if local_temp %}<i data-lucide="house" class="local-mark" title="{{ own_sensor }}" aria-label="{{ own_sensor }}"></i>{% endif %}
                     </div>
                     <div class="current-condition-block">
                         <div class="condition-icon-wrapper">
@@ -23,8 +25,16 @@
                 </div>
 
                 <!-- Current Details (Wind & Precip) -->
-                {% if (show_wind and weather.current.wind_speed is not none) or (show_precipitation and weather.current.precipitation is not none) %}
+                {% if local_humidity is not none or (show_wind and weather.current.wind_speed is not none) or (show_precipitation and weather.current.precipitation is not none) %}
                 <div class="current-details">
+                    {% if local_humidity is not none %}
+                    <div class="detail-item" title="Humidity">
+                        <i data-lucide="droplets" class="detail-icon"></i>
+                        <span>{{ local_humidity }} %</span>
+                        <i data-lucide="house" class="local-mark" title="{{ own_sensor }}" aria-label="{{ own_sensor }}"></i>
+                    </div>
+                    {% endif %}
+
                     {% if show_wind and weather.current.wind_speed is not none %}
                     <div class="detail-item" title="Wind">
                         <i data-lucide="wind" class="detail-icon"></i>
@@ -404,6 +414,22 @@
     height: 14px;
     stroke-width: 1.5px;
     color: var(--color-dimmed-charcoal, #666666);
+}
+
+/* Small mark: this value comes from the owner's own sensor */
+.local-mark {
+    width: 14px;
+    height: 14px;
+    stroke-width: 1.75px;
+    color: var(--color-standard-gray, #999999);
+    margin: 6px 0 0 6px;
+    flex: none;
+}
+
+.detail-item .local-mark {
+    width: 12px;
+    height: 12px;
+    margin: 0 0 0 2px;
 }
 
 /* Forecast layouts */

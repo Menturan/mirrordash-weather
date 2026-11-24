@@ -42,5 +42,6 @@
   "warning_level": "{level} varning",
   "warning_from": "Från {start}",
   "warning_until": "Tills {end}",
-  "warning_until_further_notice": "Tills vidare"
+  "warning_until_further_notice": "Tills vidare",
+  "own_sensor": "Egen sensor"
 }
