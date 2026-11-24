@@ -15,7 +15,8 @@
         "openweathermap"
       ],
       "title": "Weather Provider",
-      "description": "Select weather provider. SMHI is recommended for the Nordics, Open-Meteo is key-less and global, WeatherAPI and OpenWeather require API keys.",
+      "description": "Select weather provider.",
+      "help": "SMHI is recommended for the Nordics, Open-Meteo is key-less and global, WeatherAPI and OpenWeather require API keys.",
       "enum_titles": [
         "SMHI",
         "Open-Meteo",
@@ -138,7 +139,8 @@
         "Off"
       ],
       "title": "Weather Warnings",
-      "description": "Weather warnings for your location, under the current weather. From SMHI and WeatherAPI; Open-Meteo and OpenWeather have none. Messages are SMHI's calmer notices, such as a risk of water shortage.",
+      "description": "Weather warnings for your location, under the current weather.",
+      "help": "From SMHI and WeatherAPI; Open-Meteo and OpenWeather have none. Messages are SMHI's calmer notices, such as a risk of water shortage.",
       "show_if": {
         "provider": [
           "smhi",
@@ -168,7 +170,8 @@
       "type": "string",
       "default": "",
       "title": "Outdoor Temperature From",
-      "description": "The public event of a module that sends your own outdoor temperature, such as mirrordash_homeassistant.sensor.outdoor_temperature. It must send {\"value\": 3.4, \"unit\": \"°C\"}. Replaces the provider's current temperature while readings arrive; after 10 minutes without one the provider's comes back. Empty: off.",
+      "description": "Use your own outdoor temperature, sent as a public event by another module.",
+      "help": "The public event of a module that sends your own outdoor temperature, such as mirrordash_homeassistant.sensor.outdoor_temperature. It must send {\"value\": 3.4, \"unit\": \"°C\"}. Replaces the provider's current temperature while readings arrive; after 10 minutes without one the provider's comes back. Empty: off.",
       "pattern": "([A-Za-z0-9_]+\\.[A-Za-z0-9_.:-]{1,100})?",
       "pattern_message": "An event name: a module's package name, a dot and the event, such as mirrordash_homeassistant.sensor.outdoor_temperature",
       "group": "From Other Modules"
@@ -177,7 +180,8 @@
       "type": "string",
       "default": "",
       "title": "Outdoor Humidity From",
-      "description": "The public event of a module that sends your own outdoor humidity, such as mirrordash_homeassistant.sensor.outdoor_humidity. It must send {\"value\": 82, \"unit\": \"%\"}. Shown with the current details while readings arrive; after 10 minutes without one it disappears. Empty: off.",
+      "description": "Use your own outdoor humidity, sent as a public event by another module.",
+      "help": "The public event of a module that sends your own outdoor humidity, such as mirrordash_homeassistant.sensor.outdoor_humidity. It must send {\"value\": 82, \"unit\": \"%\"}. Shown with the current details while readings arrive; after 10 minutes without one it disappears. Empty: off.",
       "pattern": "([A-Za-z0-9_]+\\.[A-Za-z0-9_.:-]{1,100})?",
       "pattern_message": "An event name: a module's package name, a dot and the event, such as mirrordash_homeassistant.sensor.outdoor_humidity",
       "group": "From Other Modules"
