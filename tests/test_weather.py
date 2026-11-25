@@ -146,7 +146,6 @@ def base_config():
             "longitude": 18.0686
         },
         "provider": "smhi",
-        "show_header": True,
         "show_wind": True,
         "show_precipitation": True,
         "show_forecast": True,

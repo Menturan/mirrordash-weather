@@ -1,7 +1,7 @@
 {% set own_sensor = translations.get("own_sensor", "Own sensor") %}
 <div class="weather-container layout-{{ layout }} type-{{ forecast_type }}">
     {% if show_header %}
-    <h2 class="module-header">{{ translations.get("title", "Weather") }}</h2>
+    <h2 class="module-header">{{ heading or translations.get("title", "Weather") }}</h2>
     {% endif %}
 
     <div class="weather-body">
@@ -277,24 +277,9 @@
     display: flex;
     flex-direction: column;
     width: 100%;
+    max-width: 100%;
     color: var(--color-standard-gray, #999999);
     box-sizing: border-box;
-}
-
-.layout-horizontal {
-    max-width: 440px;
-}
-
-.layout-vertical {
-    max-width: 320px;
-}
-
-.type-combined.layout-horizontal {
-    max-width: 460px;
-}
-
-.type-combined.layout-vertical {
-    max-width: 380px;
 }
 
 /* Horizontal alignments */

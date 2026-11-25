@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Weather",
-  "requires_mirrordash": "0.13",
+  "requires_mirrordash": "0.21",
   "description": "Current weather and forecast for your location, from SMHI, Open-Meteo, WeatherAPI or OpenWeather.",
   "type": "object",
   "properties": {
@@ -14,7 +14,7 @@
         "weatherapi",
         "openweathermap"
       ],
-      "title": "Weather Provider",
+      "title": "Weather provider",
       "description": "Select weather provider.",
       "help": "SMHI is recommended for the Nordics, Open-Meteo is key-less and global, WeatherAPI and OpenWeather require API keys.",
       "enum_titles": [
@@ -27,8 +27,8 @@
     "weatherapi_key": {
       "type": "string",
       "default": "",
-      "title": "WeatherAPI.com Key",
-      "description": "API Key for WeatherAPI.com (required if WeatherAPI is selected).",
+      "title": "API key",
+      "description": "API key from WeatherAPI.com (required if WeatherAPI is selected).",
       "format": "password",
       "show_if": {
         "provider": [
@@ -39,8 +39,8 @@
     "openweathermap_key": {
       "type": "string",
       "default": "",
-      "title": "OpenWeatherMap Key",
-      "description": "API Key for OpenWeatherMap (required if OpenWeatherMap is selected).",
+      "title": "API key",
+      "description": "API key from OpenWeatherMap (required if OpenWeatherMap is selected).",
       "format": "password",
       "show_if": {
         "provider": [
@@ -48,28 +48,22 @@
         ]
       }
     },
-    "show_header": {
-      "type": "boolean",
-      "default": true,
-      "title": "Show Header",
-      "description": "Display the module header title."
-    },
     "show_wind": {
       "type": "boolean",
       "default": true,
-      "title": "Show Wind",
+      "title": "Show wind",
       "description": "Display wind speed and direction."
     },
     "show_precipitation": {
       "type": "boolean",
       "default": true,
-      "title": "Show Precipitation",
+      "title": "Show precipitation",
       "description": "Display current precipitation information."
     },
     "show_forecast": {
       "type": "boolean",
       "default": true,
-      "title": "Show Forecast",
+      "title": "Show forecast",
       "description": "Display the daily forecast table."
     },
     "forecast_days": {
@@ -77,7 +71,7 @@
       "default": 4,
       "minimum": 1,
       "maximum": 7,
-      "title": "Forecast Days",
+      "title": "Forecast days",
       "description": "Number of days to show in the daily forecast.",
       "show_if": {
         "show_forecast": [
@@ -98,7 +92,7 @@
         "hourly",
         "combined"
       ],
-      "title": "Forecast Type",
+      "title": "Forecast type",
       "description": "Select forecast data: daily (upcoming days), hourly (upcoming hours), or combined (both today's hours and upcoming days).",
       "show_if": {
         "show_forecast": [
@@ -118,7 +112,7 @@
         "horizontal",
         "vertical"
       ],
-      "title": "Layout Style",
+      "title": "Look",
       "description": "Select the visual style: horizontal (wider grid timeline/columns) or vertical (original list/rows).",
       "enum_titles": [
         "Columns",
@@ -138,7 +132,7 @@
         "Warnings and messages",
         "Off"
       ],
-      "title": "Weather Warnings",
+      "title": "Weather warnings",
       "description": "Weather warnings for your location, under the current weather.",
       "help": "From SMHI and WeatherAPI; Open-Meteo and OpenWeather have none. Messages are SMHI's calmer notices, such as a risk of water shortage.",
       "show_if": {
@@ -153,7 +147,7 @@
       "default": 6,
       "minimum": 1,
       "maximum": 24,
-      "title": "Forecast Hours",
+      "title": "Forecast hours",
       "description": "Number of hours to show in the hourly timeline.",
       "show_if": {
         "show_forecast": [
@@ -169,35 +163,34 @@
     "outdoor_temperature_event": {
       "type": "string",
       "default": "",
-      "title": "Outdoor Temperature From",
+      "title": "Outdoor temperature from",
       "description": "Use your own outdoor temperature, sent as a public event by another module.",
       "help": "The public event of a module that sends your own outdoor temperature, such as mirrordash_homeassistant.sensor.outdoor_temperature. It must send {\"value\": 3.4, \"unit\": \"°C\"}. Replaces the provider's current temperature while readings arrive; after 10 minutes without one the provider's comes back. Empty: off.",
       "pattern": "([A-Za-z0-9_]+\\.[A-Za-z0-9_.:-]{1,100})?",
       "pattern_message": "An event name: a module's package name, a dot and the event, such as mirrordash_homeassistant.sensor.outdoor_temperature",
-      "group": "From Other Modules"
+      "group": "From other modules"
     },
     "outdoor_humidity_event": {
       "type": "string",
       "default": "",
-      "title": "Outdoor Humidity From",
+      "title": "Outdoor humidity from",
       "description": "Use your own outdoor humidity, sent as a public event by another module.",
       "help": "The public event of a module that sends your own outdoor humidity, such as mirrordash_homeassistant.sensor.outdoor_humidity. It must send {\"value\": 82, \"unit\": \"%\"}. Shown with the current details while readings arrive; after 10 minutes without one it disappears. Empty: off.",
       "pattern": "([A-Za-z0-9_]+\\.[A-Za-z0-9_.:-]{1,100})?",
       "pattern_message": "An event name: a module's package name, a dot and the event, such as mirrordash_homeassistant.sensor.outdoor_humidity",
-      "group": "From Other Modules"
+      "group": "From other modules"
     },
     "interval": {
       "type": "integer",
       "default": 900,
-      "title": "Update Interval (Seconds)",
+      "title": "Update interval",
       "description": "Time to wait between data refreshes (15 minutes recommended).",
-      "group": "Advanced"
+      "unit": "s"
     }
   },
   "required": [
     "interval",
     "provider",
-    "show_header",
     "show_wind",
     "show_precipitation",
     "show_forecast",

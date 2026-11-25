@@ -216,7 +216,6 @@ class WeatherModule:
         self.weatherapi_key = config.get("weatherapi_key", "")
         self.openweathermap_key = config.get("openweathermap_key", "")
         
-        self.show_header = config.get("show_header", True)
         self.show_wind = config.get("show_wind", True)
         self.show_precipitation = config.get("show_precipitation", True)
         self.show_forecast = config.get("show_forecast", True)
@@ -890,7 +889,6 @@ class WeatherModule:
             "widget.html",
             weather=weather_info,
             warnings=warnings,
-            show_header=self.show_header,
             show_wind=self.show_wind,
             show_precipitation=self.show_precipitation,
             show_forecast=self.show_forecast,
