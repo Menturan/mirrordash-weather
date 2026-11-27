@@ -282,6 +282,23 @@
     box-sizing: border-box;
 }
 
+/* Inside the module's preferred width (29rem) each look keeps its own cap so it doesn't stretch */
+.layout-horizontal {
+    max-width: min(27.5rem, 100%);
+}
+
+.layout-vertical {
+    max-width: min(20rem, 100%);
+}
+
+.type-combined.layout-horizontal {
+    max-width: min(28.75rem, 100%);
+}
+
+.type-combined.layout-vertical {
+    max-width: min(23.75rem, 100%);
+}
+
 /* Horizontal alignments */
 /* Vertical alignments */
 .weather-body {

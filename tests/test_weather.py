@@ -420,3 +420,11 @@ async def test_weatherapi_alerts_once_each(base_config):
     found = await module.fetch_warnings(data, NOW)
     assert [w["title"] for w in found] == ["Moderate wind warning"]  # once, not the copy, the minor or the old one
     assert found[0]["level"] == "Warning" and found[0]["when"] == "Today 17:00 – tomorrow 06:00"
+
+
+def test_preferred_width_is_declared_in_rem():
+    import json
+    import mirrordash_weather
+    schema = json.loads((Path(mirrordash_weather.__file__).parent / "config_schema.json").read_text())
+    assert schema["preferred_width"] == "29rem"
+    assert "width_percent" not in schema["properties"]
